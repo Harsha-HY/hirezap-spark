@@ -487,8 +487,19 @@ const HRCandidatesView = ({ companyId }: Props) => {
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
       <div className="rounded-xl border border-border bg-card">
-        <div className="px-6 py-4 border-b border-border">
+        <div className="px-6 py-4 border-b border-border flex items-center justify-between gap-4">
           <h2 className="text-lg font-semibold text-foreground">All Candidates ({applications.length})</h2>
+          {testCompletedApps.length > 0 && currentUserRole === "manager" && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setCutoffDialogOpen(true)}
+              className="gap-2 text-xs"
+            >
+              <Filter className="h-3.5 w-3.5" />
+              Auto-Approve by Cutoff ({testCompletedApps.length} pending)
+            </Button>
+          )}
         </div>
 
         {applications.length === 0 ? (
