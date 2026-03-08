@@ -68,7 +68,7 @@ const AptitudeTest = () => {
 
       setCandidateId(user.id);
 
-      // Check if already completed
+      // Block if already completed
       const { data: completedApp } = await supabase
         .from("applications")
         .select("id")
@@ -77,9 +77,8 @@ const AptitudeTest = () => {
         .maybeSingle();
 
       if (completedApp) {
-        // Already completed - don't allow retake
+        setAccessMessage("You already submitted this test. Retake is not allowed.");
         setLoading(false);
-        setAuthorized(false);
         return;
       }
 
