@@ -323,22 +323,31 @@ const AptitudeTest = () => {
   }, [phase, currentQ]);
 
   const startTest = async () => {
-    // Request fullscreen
     try {
-      await document.documentElement.requestFullscreen();
-    } catch (e) {
-      console.warn("Fullscreen not supported");
-    }
+      // CRITICAL: call getUserMedia directly in click handler chain
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: "user",
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+        },
+        audio: true,
+      });
 
-    // Start webcam with audio
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
       streamRef.current = stream;
+
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
-        videoRef.current.onloadedmetadata = () => {
-          videoRef.current?.play();
-        };
+        videoRef.current.muted = true;
+        videoRef.current.playsInline = true;
+        await videoRef.current.play().catch(() => undefined);
+      }
+
+      // Request fullscreen after media starts
+      try {
+        await document.documentElement.requestFullscreen();
+      } catch (e) {
+        console.warn("Fullscreen not supported");
       }
 
       // Setup audio analyser for sound detection
