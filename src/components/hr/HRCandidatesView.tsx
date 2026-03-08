@@ -122,12 +122,31 @@ const HRCandidatesView = ({ companyId }: Props) => {
       toast({ title: "No Resume", description: "This candidate did not upload a resume." });
       return;
     }
-    const { data } = await supabase.storage.from("resumes").createSignedUrl(url, 300);
+
+    let storagePath = url;
+
+    // If it's a full Supabase URL, extract the storage path
+    if (url.startsWith("http")) {
+      const marker = "/object/public/resumes/";
+      const markerAlt = "/object/sign/resumes/";
+      let idx = url.indexOf(marker);
+      if (idx !== -1) {
+        storagePath = decodeURIComponent(url.substring(idx + marker.length));
+      } else {
+        idx = url.indexOf(markerAlt);
+        if (idx !== -1) {
+          storagePath = decodeURIComponent(url.substring(idx + markerAlt.length));
+        }
+      }
+    }
+
+    const { data, error } = await supabase.storage.from("resumes").createSignedUrl(storagePath, 3600);
     if (data?.signedUrl) {
       setResumeUrl(data.signedUrl);
       setResumeDialogOpen(true);
     } else {
-      toast({ title: "Error", description: "Could not load resume.", variant: "destructive" });
+      console.error("Signed URL error:", error, "path:", storagePath);
+      toast({ title: "Error", description: "Could not load resume. The file may not exist.", variant: "destructive" });
     }
   };
 
