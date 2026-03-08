@@ -85,6 +85,67 @@ export type Database = {
           },
         ]
       }
+      assessments: {
+        Row: {
+          application_id: string
+          approved_at: string | null
+          company_id: string
+          created_at: string
+          created_by: string
+          id: string
+          job_id: string
+          questions: Json
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          application_id: string
+          approved_at?: string | null
+          company_id: string
+          created_at?: string
+          created_by: string
+          id?: string
+          job_id: string
+          questions?: Json
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          application_id?: string
+          approved_at?: string | null
+          company_id?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          job_id?: string
+          questions?: Json
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assessments_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "applications"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assessments_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assessments_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       companies: {
         Row: {
           company_code: string
