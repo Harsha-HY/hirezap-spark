@@ -29,16 +29,23 @@ Deno.serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
-    // Fetch application with job details and candidate info
+    // Fetch application
     const { data: application, error: appErr } = await supabase
       .from("applications")
-      .select("*, candidate:candidate_id(id, full_name, email, phone)")
+      .select("*")
       .eq("id", applicationId)
       .maybeSingle();
 
     if (appErr || !application) {
       throw new Error("Application not found: " + (appErr?.message || ""));
     }
+
+    // Fetch candidate info separately
+    const { data: candidate } = await supabase
+      .from("users")
+      .select("id, full_name, email, phone")
+      .eq("id", application.candidate_id)
+      .maybeSingle();
 
     const { data: job, error: jobErr } = await supabase
       .from("jobs")
