@@ -99,6 +99,33 @@ const CandidateDashboard = () => {
       }
     }
 
+    // Fetch offer letters, interviews, BGV docs
+    const { data: offers } = await supabase
+      .from("offer_letters")
+      .select("*")
+      .eq("candidate_id", userData.id)
+      .order("created_at", { ascending: false })
+      .limit(1);
+    if (offers?.length) {
+      setOfferLetter(offers[0]);
+      // Get company name
+      const { data: comp } = await supabase.from("companies").select("company_name").eq("id", (offers[0] as any).company_id).maybeSingle();
+      if (comp) setCompanyName(comp.company_name);
+    }
+
+    const { data: interviewData } = await supabase
+      .from("interviews")
+      .select("*")
+      .eq("candidate_id", userData.id)
+      .order("scheduled_date", { ascending: false });
+    if (interviewData) setInterviews(interviewData as any);
+
+    const { data: bgvData } = await supabase
+      .from("bgv_documents")
+      .select("*")
+      .eq("candidate_id", userData.id);
+    if (bgvData) setBgvDocs(bgvData as any);
+
     const { data: notifs } = await supabase
       .from("notifications")
       .select("*")
