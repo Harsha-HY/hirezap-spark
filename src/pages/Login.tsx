@@ -50,16 +50,16 @@ const Login = () => {
 
   return (
     <div className="relative flex min-h-screen flex-col items-center justify-center bg-background overflow-hidden">
-      {/* Background image with overlay */}
+      {/* Background */}
       <div
-        className="absolute inset-0 opacity-30"
+        className="absolute inset-0 opacity-50"
         style={{
           backgroundImage: `url(${authBg})`,
           backgroundSize: "cover",
           backgroundPosition: "center",
         }}
       />
-      <div className="absolute inset-0 bg-gradient-to-b from-background via-background/80 to-background" />
+      <div className="absolute inset-0 bg-gradient-to-b from-background/60 via-background/70 to-background/90" />
 
       {/* Content */}
       <div className="relative z-10 flex w-full max-w-md flex-col items-center px-6">
