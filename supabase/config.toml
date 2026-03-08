@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.score-resume]
 verify_jwt = false
+
+[functions.generate-assessment]
+verify_jwt = false

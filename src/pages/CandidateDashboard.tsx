@@ -238,17 +238,28 @@ const CandidateDashboard = () => {
                             <Lock className="h-4 w-4 text-muted-foreground" />
                           )}
                         </div>
-                        <span
-                          className={`text-sm font-medium ${
-                            isCompleted
-                              ? "text-primary"
-                              : isCurrent
-                              ? "text-yellow-500"
-                              : "text-muted-foreground"
-                          }`}
-                        >
-                          {stage.label}
-                        </span>
+                        <div className="flex items-center gap-3">
+                          <span
+                            className={`text-sm font-medium ${
+                              isCompleted
+                                ? "text-primary"
+                                : isCurrent
+                                ? "text-yellow-500"
+                                : "text-muted-foreground"
+                            }`}
+                          >
+                            {stage.label}
+                          </span>
+                          {isCurrent && stage.key === "aptitude_test" && (
+                            <Button
+                              size="sm"
+                              onClick={() => navigate("/aptitude-test")}
+                              className="bg-primary text-primary-foreground h-7 px-3 text-xs"
+                            >
+                              🎯 Take Test
+                            </Button>
+                          )}
+                        </div>
                       </div>
                     );
                   })}

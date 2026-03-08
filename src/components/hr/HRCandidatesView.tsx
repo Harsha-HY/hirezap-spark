@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { FileText, ArrowRight, XCircle, BookOpen, Eye } from "lucide-react";
+import { FileText, ArrowRight, XCircle, BookOpen, Eye, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -54,6 +55,7 @@ const stageBadgeClass: Record<string, string> = {
 };
 
 const HRCandidatesView = ({ companyId }: Props) => {
+  const navigate = useNavigate();
   const [applications, setApplications] = useState<(Application & { candidate_name: string; candidate_email: string; job_title: string })[]>([]);
   const [loading, setLoading] = useState(true);
   const [resumeUrl, setResumeUrl] = useState<string | null>(null);
@@ -61,6 +63,7 @@ const HRCandidatesView = ({ companyId }: Props) => {
   const [testResultDialog, setTestResultDialog] = useState<any>(null);
   const [testAnswers, setTestAnswers] = useState<any[]>([]);
   const [testViolations, setTestViolations] = useState<any[]>([]);
+  const [generatingTestFor, setGeneratingTestFor] = useState<string | null>(null);
   const { toast } = useToast();
 
   const fetchApplications = async () => {
@@ -166,25 +169,44 @@ const HRCandidatesView = ({ companyId }: Props) => {
   };
 
   const handleOpenAptitudeTest = async (app: Application & { candidate_name: string; job_title: string }) => {
-    // Update stage
-    await supabase
-      .from("applications")
-      .update({ current_stage: "aptitude_test" })
-      .eq("id", app.id);
-
-    // Send notification to candidate
-    await supabase.from("notifications").insert({
-      user_id: app.candidate_id,
-      title: "🎉 You are shortlisted!",
-      message: `Congratulations! Your resume for "${app.job_title}" has been reviewed and you are selected for the Aptitude Test round. Login to take your test. Complete within 12 hours.`,
-    });
-
+    setGeneratingTestFor(app.id);
     toast({
-      title: "Aptitude Test Opened",
-      description: `${app.candidate_name} has been notified to take the aptitude test.`,
+      title: "🤖 Generating Questions...",
+      description: "AI is creating 40 aptitude questions for this role. Please wait.",
     });
 
-    fetchApplications();
+    try {
+      // Get HR user id
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      const { data: hrUser } = await supabase
+        .from("users")
+        .select("id")
+        .eq("user_id", session.user.id)
+        .maybeSingle();
+
+      const { data, error } = await supabase.functions.invoke("generate-assessment", {
+        body: {
+          jobId: app.job_id,
+          applicationId: app.id,
+          companyId,
+          createdBy: hrUser?.id,
+        },
+      });
+
+      if (error) throw error;
+
+      if (data?.assessmentId) {
+        toast({
+          title: "🤖 AI has created 40 aptitude questions!",
+          description: "Please review before sending to candidate. Nothing sent yet.",
+        });
+        navigate(`/review-assessment/${data.assessmentId}`);
+      }
+    } catch (e: any) {
+      toast({ title: "Error", description: e.message || "Failed to generate questions", variant: "destructive" });
+    }
+    setGeneratingTestFor(null);
   };
 
   const handleViewTestResults = async (app: any) => {
@@ -308,11 +330,16 @@ const HRCandidatesView = ({ companyId }: Props) => {
                               variant="ghost"
                               size="sm"
                               onClick={() => handleOpenAptitudeTest(app)}
+                              disabled={generatingTestFor === app.id}
                               className="text-purple-500 hover:text-purple-600 gap-1 text-xs"
                               title="Open Aptitude Test"
                             >
-                              <BookOpen className="h-3.5 w-3.5" />
-                              Open Test
+                              {generatingTestFor === app.id ? (
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              ) : (
+                                <BookOpen className="h-3.5 w-3.5" />
+                              )}
+                              {generatingTestFor === app.id ? "Generating..." : "Open Test"}
                             </Button>
                           )}
                           {canViewResults && (

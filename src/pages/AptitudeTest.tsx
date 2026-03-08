@@ -4,56 +4,18 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { motion } from "framer-motion";
-import { Shield, Clock, Camera, AlertTriangle, CheckCircle } from "lucide-react";
+import { Shield, Clock, Camera, AlertTriangle, CheckCircle, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
-// Default questions
-const defaultQuestions = [
-  // Logical Reasoning (10)
-  { q: "If all roses are flowers and some flowers fade quickly, which statement is true?", options: ["All roses fade quickly", "Some roses may fade quickly", "No roses fade quickly", "Roses are not flowers"], correct: 1, section: "Logical Reasoning" },
-  { q: "Find the next number: 2, 6, 12, 20, 30, ?", options: ["40", "42", "38", "36"], correct: 1, section: "Logical Reasoning" },
-  { q: "If A > B, B > C, and C > D, then:", options: ["D > A", "A > D", "A = D", "Cannot determine"], correct: 1, section: "Logical Reasoning" },
-  { q: "Which word does NOT belong: Apple, Mango, Potato, Banana?", options: ["Apple", "Mango", "Potato", "Banana"], correct: 2, section: "Logical Reasoning" },
-  { q: "If MOUSE is coded as PRXVH, then CAT is coded as?", options: ["FDW", "DBU", "ECU", "FCV"], correct: 0, section: "Logical Reasoning" },
-  { q: "A clock shows 3:15. What is the angle between the hour and minute hands?", options: ["0°", "7.5°", "15°", "22.5°"], correct: 1, section: "Logical Reasoning" },
-  { q: "Complete the series: AB, CD, EF, ?", options: ["GH", "HI", "FG", "GI"], correct: 0, section: "Logical Reasoning" },
-  { q: "If 5 machines make 5 widgets in 5 minutes, how long for 100 machines to make 100 widgets?", options: ["100 minutes", "5 minutes", "20 minutes", "50 minutes"], correct: 1, section: "Logical Reasoning" },
-  { q: "Which figure completes the pattern? ○ □ △ ○ □ ?", options: ["○", "□", "△", "◇"], correct: 2, section: "Logical Reasoning" },
-  { q: "If yesterday was Wednesday, what day will it be 100 days from now?", options: ["Friday", "Thursday", "Saturday", "Sunday"], correct: 0, section: "Logical Reasoning" },
-  // Quantitative Aptitude (10)
-  { q: "A train 150m long passes a pole in 15 seconds. What is the speed in km/h?", options: ["36", "40", "30", "45"], correct: 0, section: "Quantitative" },
-  { q: "If the cost price is ₹400 and selling price is ₹500, what is the profit %?", options: ["20%", "25%", "30%", "15%"], correct: 1, section: "Quantitative" },
-  { q: "Simple interest on ₹5000 at 8% for 3 years is:", options: ["₹1200", "₹1000", "₹1500", "₹800"], correct: 0, section: "Quantitative" },
-  { q: "The HCF of 12 and 18 is:", options: ["3", "6", "9", "12"], correct: 1, section: "Quantitative" },
-  { q: "A pipe can fill a tank in 6 hours. How much of the tank is filled in 2 hours?", options: ["1/2", "1/3", "2/3", "1/4"], correct: 1, section: "Quantitative" },
-  { q: "What is 15% of 200?", options: ["25", "30", "35", "20"], correct: 1, section: "Quantitative" },
-  { q: "If x + y = 10 and x - y = 4, then x = ?", options: ["5", "6", "7", "8"], correct: 2, section: "Quantitative" },
-  { q: "The average of 10, 20, 30, 40, 50 is:", options: ["25", "30", "35", "40"], correct: 1, section: "Quantitative" },
-  { q: "A car travels 240 km in 4 hours. What is the speed?", options: ["50 km/h", "55 km/h", "60 km/h", "65 km/h"], correct: 2, section: "Quantitative" },
-  { q: "The square root of 144 is:", options: ["11", "12", "13", "14"], correct: 1, section: "Quantitative" },
-  // English Verbal (10)
-  { q: "Choose the synonym of 'Benevolent':", options: ["Cruel", "Kind", "Selfish", "Angry"], correct: 1, section: "English" },
-  { q: "Choose the antonym of 'Verbose':", options: ["Wordy", "Brief", "Loud", "Complex"], correct: 1, section: "English" },
-  { q: "Fill in the blank: She ___ to school every day.", options: ["go", "goes", "going", "gone"], correct: 1, section: "English" },
-  { q: "Which sentence is grammatically correct?", options: ["He don't know", "He doesn't knows", "He doesn't know", "He not know"], correct: 2, section: "English" },
-  { q: "Choose the correct spelling:", options: ["Accomodate", "Accommodate", "Acomodate", "Acommodate"], correct: 1, section: "English" },
-  { q: "The passive voice of 'She writes a letter' is:", options: ["A letter is written by her", "A letter was written by her", "A letter written by her", "A letter is being written"], correct: 0, section: "English" },
-  { q: "'To beat around the bush' means:", options: ["To hit bushes", "To avoid the main topic", "To garden", "To be direct"], correct: 1, section: "English" },
-  { q: "Choose the correct article: ___ honest man is respected.", options: ["A", "An", "The", "No article"], correct: 1, section: "English" },
-  { q: "Identify the noun: 'Happiness is the key to success.'", options: ["is", "key", "Happiness", "to"], correct: 2, section: "English" },
-  { q: "The plural of 'child' is:", options: ["childs", "childrens", "children", "child's"], correct: 2, section: "English" },
-  // Technical MCQ (10)
-  { q: "What does HTML stand for?", options: ["Hyper Text Markup Language", "High Tech Modern Language", "Hyper Transfer Markup Language", "Home Tool Markup Language"], correct: 0, section: "Technical" },
-  { q: "Which data structure uses FIFO?", options: ["Stack", "Queue", "Tree", "Graph"], correct: 1, section: "Technical" },
-  { q: "What is the time complexity of binary search?", options: ["O(n)", "O(n²)", "O(log n)", "O(1)"], correct: 2, section: "Technical" },
-  { q: "Which keyword is used to define a constant in JavaScript?", options: ["var", "let", "const", "static"], correct: 2, section: "Technical" },
-  { q: "What does CSS stand for?", options: ["Computer Style Sheets", "Cascading Style Sheets", "Creative Style System", "Coded Style Sheets"], correct: 1, section: "Technical" },
-  { q: "Which protocol is used for secure web browsing?", options: ["HTTP", "FTP", "HTTPS", "SMTP"], correct: 2, section: "Technical" },
-  { q: "What is the primary key in a database?", options: ["Any column", "A unique identifier for each row", "The first column", "A foreign key"], correct: 1, section: "Technical" },
-  { q: "Which sorting algorithm has the best average time complexity?", options: ["Bubble Sort", "Selection Sort", "Merge Sort", "Insertion Sort"], correct: 2, section: "Technical" },
-  { q: "In OOP, what is encapsulation?", options: ["Inheritance of classes", "Hiding internal state", "Multiple instances", "Abstract methods"], correct: 1, section: "Technical" },
-  { q: "What does API stand for?", options: ["Application Programming Interface", "Applied Program Integration", "Automatic Programming Interface", "Application Process Integration"], correct: 0, section: "Technical" },
-];
+interface TestQuestion {
+  question_number: number;
+  question: string;
+  options: string[];
+  correct_answer: string;
+  difficulty: string;
+  time_seconds: number;
+  section?: string;
+}
 
 const AptitudeTest = () => {
   const navigate = useNavigate();
@@ -64,15 +26,16 @@ const AptitudeTest = () => {
   const [authorized, setAuthorized] = useState(false);
   const [application, setApplication] = useState<any>(null);
   const [candidateId, setCandidateId] = useState("");
+  const [questions, setQuestions] = useState<TestQuestion[]>([]);
 
   // Test state
   const [phase, setPhase] = useState<"rules" | "test" | "submitted">("rules");
   const [agreed, setAgreed] = useState(false);
   const [currentQ, setCurrentQ] = useState(0);
-  const [answers, setAnswers] = useState<(number | null)[]>(Array(40).fill(null));
-  const [timeLeft, setTimeLeft] = useState(45 * 60); // 45 minutes in seconds
+  const [answers, setAnswers] = useState<(number | null)[]>([]);
+  const [timeLeft, setTimeLeft] = useState(45 * 60);
   const [questionStartTime, setQuestionStartTime] = useState(Date.now());
-  const [timePerQuestion, setTimePerQuestion] = useState<number[]>(Array(40).fill(0));
+  const [timePerQuestion, setTimePerQuestion] = useState<number[]>([]);
   const [violations, setViolations] = useState(0);
   const [submitting, setSubmitting] = useState(false);
 
@@ -80,7 +43,7 @@ const AptitudeTest = () => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
 
-  // Check authorization
+  // Check authorization and load questions from assessments
   useEffect(() => {
     const checkAccess = async () => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -108,7 +71,30 @@ const AptitudeTest = () => {
 
       if (app) {
         setApplication(app);
-        setAuthorized(true);
+
+        // Load approved assessment questions
+        const { data: assessment } = await supabase
+          .from("assessments")
+          .select("*")
+          .eq("application_id", app.id)
+          .eq("status", "approved")
+          .maybeSingle();
+
+        if (assessment?.questions) {
+          const qs = assessment.questions as any;
+          if (qs.sections) {
+            const flatQuestions: TestQuestion[] = [];
+            for (const section of qs.sections) {
+              for (const q of section.questions) {
+                flatQuestions.push({ ...q, section: section.name });
+              }
+            }
+            setQuestions(flatQuestions);
+            setAnswers(Array(flatQuestions.length).fill(null));
+            setTimePerQuestion(Array(flatQuestions.length).fill(0));
+            setAuthorized(true);
+          }
+        }
       }
       setLoading(false);
     };
@@ -260,10 +246,14 @@ const AptitudeTest = () => {
 
     // Calculate score
     let correct = 0;
+    const totalQ = questions.length;
     answers.forEach((ans, i) => {
-      if (ans === defaultQuestions[i].correct) correct++;
+      if (questions[i] && ans !== null) {
+        const correctIdx = questions[i].correct_answer.charCodeAt(0) - 65;
+        if (ans === correctIdx) correct++;
+      }
     });
-    const score = Math.round((correct / 40) * 100);
+    const score = Math.round((correct / totalQ) * 100);
 
     // Save answers
     const answerRows = answers.map((ans, i) => ({
@@ -431,8 +421,11 @@ const AptitudeTest = () => {
   }
 
   // Test phase
-  const question = defaultQuestions[currentQ];
-  const progress = ((currentQ + 1) / 40) * 100;
+  const question = questions[currentQ];
+  const totalQ = questions.length;
+  const progress = ((currentQ + 1) / totalQ) * 100;
+
+  if (!question) return null;
 
   return (
     <div className="min-h-screen bg-background select-none">
@@ -441,7 +434,7 @@ const AptitudeTest = () => {
         <div className="flex items-center justify-between max-w-4xl mx-auto">
           <div className="flex items-center gap-4">
             <span className="text-sm font-medium text-foreground">
-              Question {currentQ + 1} of 40
+              Question {currentQ + 1} of {totalQ}
             </span>
             <span className="text-xs text-muted-foreground">
               {question.section}
@@ -479,7 +472,7 @@ const AptitudeTest = () => {
           transition={{ duration: 0.2 }}
         >
           <h2 className="text-lg font-semibold text-foreground mb-6">
-            {question.q}
+            {question.question}
           </h2>
 
           <div className="space-y-3">
@@ -519,7 +512,7 @@ const AptitudeTest = () => {
           </Button>
 
           <div className="flex items-center gap-2">
-            {currentQ < 39 ? (
+            {currentQ < totalQ - 1 ? (
               <Button
                 onClick={() => goToQuestion(currentQ + 1)}
                 className="bg-primary text-primary-foreground"
@@ -542,7 +535,7 @@ const AptitudeTest = () => {
         <div className="mt-8 p-4 rounded-xl border border-border bg-card">
           <p className="text-xs text-muted-foreground mb-3">Question Navigator</p>
           <div className="grid grid-cols-10 gap-2">
-            {Array.from({ length: 40 }, (_, i) => (
+            {Array.from({ length: totalQ }, (_, i) => (
               <button
                 key={i}
                 onClick={() => goToQuestion(i)}
