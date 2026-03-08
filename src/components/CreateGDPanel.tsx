@@ -157,6 +157,7 @@ const CreateGDPanel = ({ open, onOpenChange, companyId, userId, userName, userRo
           scheduled_time: scheduledTime,
           duration: parseInt(duration),
           instructions: instructions || null,
+          meeting_link: meetingLink || null,
           created_by: userId,
           status: "scheduled",
         } as any)
