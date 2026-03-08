@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Users, Calendar, Clock, ArrowLeft, Eye, CheckCircle, XCircle, Loader2 } from "lucide-react";
+import { Plus, Users, Calendar, Clock, ArrowLeft, Eye, CheckCircle, XCircle, Loader2, Brain } from "lucide-react";
 import { motion } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -60,6 +60,7 @@ const GDDashboard = () => {
   const [panelOpen, setPanelOpen] = useState(false);
   const [scoresDialog, setScoresDialog] = useState<GD | null>(null);
   const [updatingStage, setUpdatingStage] = useState<string | null>(null);
+  const [analyzingGD, setAnalyzingGD] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -197,6 +198,55 @@ const GDDashboard = () => {
     fetchData();
   };
 
+  const handleAnalyzeGD = async (gd: GD) => {
+    setAnalyzingGD(gd.id);
+    try {
+      const gdGroups = getGroupsForGD(gd.id);
+      const groupInfoForAI = gdGroups.map(g => ({
+        id: g.id,
+        group_name: g.group_name,
+        candidate_ids: g.candidate_ids,
+      }));
+
+      const { data, error } = await supabase.functions.invoke("analyze-gd", {
+        body: {
+          gdId: gd.id,
+          topic: gd.topic,
+          duration: gd.duration,
+          candidateNames,
+          groupInfo: groupInfoForAI,
+        },
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      toast({ title: "✅ AI Analysis Complete", description: "GD scores generated and candidates notified with personalized feedback." });
+
+      // Notify HR if manager did this
+      if (userRole === "manager") {
+        const { data: hrUsers } = await supabase
+          .from("users")
+          .select("id")
+          .eq("company_id", companyId)
+          .eq("role", "hr");
+
+        for (const hr of (hrUsers || [])) {
+          await supabase.from("notifications").insert({
+            user_id: hr.id,
+            title: "📊 GD Analysis Completed",
+            message: `${userName} completed AI analysis for GD: "${gd.topic}" (${gd.job_title}). ${getCandidateCount(gd.id)} candidates were scored. Review the results and proceed candidates to HR Interview.`,
+          });
+        }
+      }
+
+      fetchData();
+    } catch (e: any) {
+      toast({ title: "Error", description: e.message, variant: "destructive" });
+    }
+    setAnalyzingGD(null);
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-background">
@@ -294,7 +344,21 @@ const GDDashboard = () => {
                             </div>
                           )}
                         </div>
-                        <Badge className="bg-amber-500/10 text-amber-500 border-0">Scheduled</Badge>
+                        <div className="flex flex-col items-end gap-2">
+                          <Badge className="bg-amber-500/10 text-amber-500 border-0">Scheduled</Badge>
+                          <Button
+                            size="sm"
+                            onClick={() => handleAnalyzeGD(gd)}
+                            disabled={analyzingGD === gd.id}
+                            className="gap-1.5 text-xs"
+                          >
+                            {analyzingGD === gd.id ? (
+                              <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Analyzing...</>
+                            ) : (
+                              <><Brain className="h-3.5 w-3.5" /> Complete &amp; Analyze</>
+                            )}
+                          </Button>
+                        </div>
                       </div>
                     </CardContent>
                   </Card>
