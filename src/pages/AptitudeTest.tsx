@@ -726,25 +726,28 @@ const AptitudeTest = () => {
         </div>
       </div>
 
-      {/* Webcam preview */}
+      {/* Hidden webcam feed used only for proctoring analysis */}
+      <video
+        ref={videoRef}
+        autoPlay
+        muted
+        playsInline
+        className="fixed -left-[9999px] -top-[9999px] h-px w-px opacity-0 pointer-events-none"
+      />
+
+      {/* Candidate-facing caution status (no live camera shown) */}
       <div className="fixed bottom-4 right-4 z-50">
-        <div className={`w-44 rounded-xl overflow-hidden shadow-xl transition-all duration-300 ${
-          cameraAlert
-            ? "border-4 border-destructive shadow-destructive/30 animate-pulse"
-            : "border-2 border-primary/30"
-        }`}>
-          <video
-            ref={videoRef}
-            autoPlay
-            muted
-            playsInline
-            className="w-full h-auto object-cover rounded-lg"
-            style={{ minHeight: "120px" }}
-          />
+        <div
+          className={`rounded-xl border px-4 py-2 shadow-xl transition-all duration-300 ${
+            cameraAlert
+              ? "border-destructive bg-destructive/10 text-destructive animate-pulse"
+              : "border-border bg-card text-muted-foreground"
+          }`}
+        >
+          <p className="text-xs font-medium">
+            {cameraAlert ? `⚠️ ${cameraCautionText}` : "🛡️ Proctoring active"}
+          </p>
         </div>
-        <p className={`text-[10px] text-center mt-1 font-medium ${cameraAlert ? "text-destructive" : "text-muted-foreground"}`}>
-          {cameraAlert ? "⚠️ Motion/Sound Detected!" : "📹 Camera ON"}
-        </p>
       </div>
     </div>
   );
