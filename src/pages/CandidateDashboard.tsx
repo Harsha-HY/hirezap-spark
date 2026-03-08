@@ -40,6 +40,7 @@ const CandidateDashboard = () => {
   const [applications, setApplications] = useState<Application[]>([]);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activeSidebar, setActiveSidebar] = useState("Dashboard");
   const navigate = useNavigate();
 
   useEffect(() => {
