@@ -767,6 +767,64 @@ const HRCandidatesView = ({ companyId }: Props) => {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Video Viewer Dialog */}
+      <Dialog open={!!videoDialog} onOpenChange={() => setVideoDialog(null)}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Video Introduction — {videoDialog?.candidate_name}</DialogTitle>
+          </DialogHeader>
+          {videoDialog && (
+            <div className="space-y-4">
+              {videoSignedUrl ? (
+                <video
+                  src={videoSignedUrl}
+                  controls
+                  className="w-full rounded-lg border border-border aspect-video bg-black"
+                />
+              ) : (
+                <div className="w-full aspect-video bg-muted rounded-lg flex items-center justify-center">
+                  <p className="text-muted-foreground">Loading video...</p>
+                </div>
+              )}
+
+              {videoSignedUrl && (
+                <a
+                  href={videoSignedUrl}
+                  download
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 text-sm text-primary hover:underline"
+                >
+                  ⬇️ Download Video
+                </a>
+              )}
+
+              <div className="flex gap-2 pt-2">
+                <Button
+                  onClick={() => {
+                    handleUpdateStage(videoDialog.id, "interview");
+                    setVideoDialog(null);
+                  }}
+                  className="bg-primary text-primary-foreground"
+                >
+                  ✅ Move to Interview
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    handleUpdateStage(videoDialog.id, "rejected");
+                    setVideoDialog(null);
+                  }}
+                  className="text-destructive border-destructive/30"
+                >
+                  ❌ Reject Candidate
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </motion.div>
   );
 };
