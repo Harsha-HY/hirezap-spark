@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Pencil, X, Check, Target } from "lucide-react";
+import { Plus, Pencil, X, Check, Target, FileText, Upload, Loader2, CheckCircle } from "lucide-react";
 import { motion } from "framer-motion";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -37,6 +37,11 @@ const HRJobsView = ({ jobs, managers, onPostJob, onJobUpdated }: Props) => {
   const [editJob, setEditJob] = useState<JobRow | null>(null);
   const [editOpen, setEditOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [pdfFile, setPdfFile] = useState<File | null>(null);
+  const [parsingPdf, setParsingPdf] = useState(false);
+  const [parsedQuestions, setParsedQuestions] = useState<any>(null);
+  const [questionCount, setQuestionCount] = useState(0);
+  const [hasExistingQuestions, setHasExistingQuestions] = useState(false);
   const [form, setForm] = useState({
     title: "",
     department: "",
@@ -54,7 +59,7 @@ const HRJobsView = ({ jobs, managers, onPostJob, onJobUpdated }: Props) => {
     return managers.find((m) => m.id === managerId)?.full_name || "—";
   };
 
-  const openEdit = (job: JobRow) => {
+  const openEdit = async (job: JobRow) => {
     setEditJob(job);
     setForm({
       title: job.title,
@@ -67,26 +72,123 @@ const HRJobsView = ({ jobs, managers, onPostJob, onJobUpdated }: Props) => {
       status: job.status,
       aptitudeCutoff: (job as any).aptitude_cutoff ?? 60,
     });
+    setPdfFile(null);
+    setParsedQuestions(null);
+    setQuestionCount(0);
+
+    // Check if job already has aptitude questions
+    const { data } = await supabase
+      .from("jobs")
+      .select("aptitude_questions")
+      .eq("id", job.id)
+      .maybeSingle();
+
+    if (data?.aptitude_questions) {
+      setHasExistingQuestions(true);
+      const existing = data.aptitude_questions as any;
+      const count = existing.sections?.reduce(
+        (acc: number, sec: any) => acc + (sec.questions?.length || 0),
+        0
+      ) || 0;
+      setQuestionCount(count);
+      setParsedQuestions(existing);
+    } else {
+      setHasExistingQuestions(false);
+    }
+
     setEditOpen(true);
+  };
+
+  const handlePdfUpload = async (file: File) => {
+    if (!file || file.type !== "application/pdf") {
+      toast({ title: "Invalid file", description: "Please upload a PDF file.", variant: "destructive" });
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast({ title: "File too large", description: "PDF must be under 5MB.", variant: "destructive" });
+      return;
+    }
+
+    setPdfFile(file);
+    setParsingPdf(true);
+    setParsedQuestions(null);
+
+    toast({ title: "🤖 Analyzing PDF...", description: "AI is converting your PDF into MCQ questions." });
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("jobId", editJob?.id || "");
+
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/parse-pdf-questions`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          },
+          body: formData,
+        }
+      );
+
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.error || `Failed (${response.status})`);
+      }
+
+      const data = await response.json();
+      if (data.questions) {
+        setParsedQuestions(data.questions);
+        const count = data.questions.sections?.reduce(
+          (acc: number, sec: any) => acc + (sec.questions?.length || 0),
+          0
+        ) || 0;
+        setQuestionCount(count);
+        setHasExistingQuestions(false); // It's a new upload
+        toast({ title: `✅ ${count} questions extracted!` });
+      }
+    } catch (err: any) {
+      toast({ title: "PDF parsing failed", description: err.message, variant: "destructive" });
+      setPdfFile(null);
+    }
+    setParsingPdf(false);
+  };
+
+  const removeQuestions = () => {
+    setPdfFile(null);
+    setParsedQuestions(null);
+    setQuestionCount(0);
+    setHasExistingQuestions(false);
   };
 
   const handleSave = async () => {
     if (!editJob) return;
     setSaving(true);
 
+    const updateData: any = {
+      title: form.title,
+      department: form.department,
+      manager_id: form.managerId || null,
+      salary_min: form.salaryMin ? Number(form.salaryMin) : null,
+      salary_max: form.salaryMax ? Number(form.salaryMax) : null,
+      location: form.location,
+      work_type: form.workType,
+      status: form.status,
+      aptitude_cutoff: form.aptitudeCutoff,
+    };
+
+    // If new questions were parsed from PDF upload, save them
+    if (parsedQuestions && !hasExistingQuestions) {
+      updateData.aptitude_questions = parsedQuestions;
+    }
+    // If questions were explicitly removed
+    if (!parsedQuestions && !hasExistingQuestions) {
+      updateData.aptitude_questions = null;
+    }
+
     const { error } = await supabase
       .from("jobs")
-      .update({
-        title: form.title,
-        department: form.department,
-        manager_id: form.managerId || null,
-        salary_min: form.salaryMin ? Number(form.salaryMin) : null,
-        salary_max: form.salaryMax ? Number(form.salaryMax) : null,
-        location: form.location,
-        work_type: form.workType,
-        status: form.status,
-        aptitude_cutoff: form.aptitudeCutoff,
-      } as any)
+      .update(updateData)
       .eq("id", editJob.id);
 
     if (error) {
@@ -246,6 +348,69 @@ const HRJobsView = ({ jobs, managers, onPostJob, onJobUpdated }: Props) => {
               </Select>
             </div>
 
+            {/* Aptitude PDF Upload / Existing Questions */}
+            <div className="rounded-lg border border-border bg-secondary/30 p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <FileText className="h-4 w-4 text-primary" />
+                <label className="text-sm font-medium text-foreground">Aptitude Test Questions</label>
+              </div>
+
+              {parsedQuestions && !parsingPdf ? (
+                <div className="rounded-lg bg-primary/5 border border-primary/20 p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle className="h-5 w-5 text-primary" />
+                      <span className="text-sm font-medium text-foreground">
+                        {questionCount} questions {hasExistingQuestions ? "loaded" : "extracted"}
+                      </span>
+                    </div>
+                    <button type="button" onClick={removeQuestions} className="text-muted-foreground hover:text-destructive transition-colors">
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                  {pdfFile && <p className="text-[11px] text-muted-foreground">{pdfFile.name}</p>}
+                  {parsedQuestions.sections && (
+                    <div className="mt-2 space-y-1">
+                      {parsedQuestions.sections.map((sec: any, i: number) => (
+                        <div key={i} className="flex items-center justify-between text-xs">
+                          <span className="text-muted-foreground">{sec.name}</span>
+                          <span className="text-primary font-medium">{sec.questions?.length || 0} Qs</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ) : parsingPdf ? (
+                <div className="flex items-center gap-3 rounded-lg bg-primary/5 border border-primary/20 p-4">
+                  <Loader2 className="h-5 w-5 text-primary animate-spin" />
+                  <div>
+                    <p className="text-sm font-medium text-foreground">Analyzing PDF...</p>
+                    <p className="text-[11px] text-muted-foreground">AI is converting content to MCQ format</p>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <label className="flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border hover:border-primary/50 bg-secondary/20 p-5 cursor-pointer transition-colors">
+                    <Upload className="h-7 w-7 text-muted-foreground" />
+                    <span className="text-sm text-muted-foreground">Upload PDF to replace questions</span>
+                    <span className="text-[10px] text-muted-foreground">Max 5MB • PDF only</span>
+                    <input
+                      type="file"
+                      accept="application/pdf"
+                      className="hidden"
+                      onChange={(e) => {
+                        const f = e.target.files?.[0];
+                        if (f) handlePdfUpload(f);
+                      }}
+                    />
+                  </label>
+                  <p className="text-[10px] text-muted-foreground mt-2 italic">
+                    No questions attached. AI will auto-generate when candidates reach aptitude stage.
+                  </p>
+                </>
+              )}
+            </div>
+
             {/* Aptitude Cutoff */}
             <div className="rounded-lg border border-border bg-secondary/30 p-4">
               <div className="flex items-center gap-2 mb-3">
@@ -266,7 +431,7 @@ const HRJobsView = ({ jobs, managers, onPostJob, onJobUpdated }: Props) => {
               </p>
             </div>
 
-            <Button onClick={handleSave} disabled={saving} className="w-full rounded-lg py-6 text-sm font-semibold gap-2 mt-2">
+            <Button onClick={handleSave} disabled={saving || parsingPdf} className="w-full rounded-lg py-6 text-sm font-semibold gap-2 mt-2">
               {saving ? "Saving..." : (<><Check className="h-4 w-4" /> Save Changes</>)}
             </Button>
           </div>

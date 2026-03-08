@@ -41,7 +41,43 @@ Deno.serve(async (req) => {
       throw new Error("Job not found: " + (jobErr?.message || ""));
     }
 
-    // Build prompt
+    // Check if job has pre-uploaded aptitude questions
+    if (job.aptitude_questions && regenerateIndex === undefined) {
+      // Use pre-stored questions directly - no AI generation needed
+      const parsed = job.aptitude_questions;
+
+      if (applicationId && companyId && createdBy) {
+        const { data: assessment, error: insertErr } = await supabase
+          .from("assessments")
+          .insert({
+            job_id: jobId,
+            company_id: companyId,
+            application_id: applicationId,
+            questions: parsed,
+            status: "pending_approval",
+            created_by: createdBy,
+          })
+          .select("id")
+          .single();
+
+        if (insertErr) {
+          console.error("Insert error:", insertErr);
+          throw new Error("Failed to save assessment: " + insertErr.message);
+        }
+
+        return new Response(JSON.stringify({ success: true, assessmentId: assessment.id, questions: parsed, source: "pre_uploaded" }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      return new Response(JSON.stringify({ success: true, questions: parsed, source: "pre_uploaded" }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Build prompt for AI generation (fallback when no pre-uploaded questions)
     let prompt: string;
 
     if (regenerateIndex !== undefined && regenerateIndex !== null) {
