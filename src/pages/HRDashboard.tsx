@@ -162,13 +162,25 @@ const HRDashboard = () => {
 
   const handleNavClick = (label: string) => {
     setActiveNav(label);
-    if (label === "Jobs") {
-      document.getElementById("jobs-section")?.scrollIntoView({ behavior: "smooth", block: "start" });
+
+    const sectionMap: Record<string, string> = {
+      Dashboard: "dashboard-top",
+      Jobs: "jobs-section",
+      Candidates: "candidates-section",
+      Interviews: "interviews-section",
+      "Group Discussion": "group-discussion-section",
+      Messages: "messages-section",
+      Analytics: "analytics-section",
+      Settings: "settings-section",
+    };
+
+    const sectionId = sectionMap[label];
+    if (sectionId) {
+      document.getElementById(sectionId)?.scrollIntoView({ behavior: "smooth", block: "start" });
       return;
     }
-    if (label === "Dashboard") {
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    }
+
+    toast({ title: "Section unavailable", description: `${label} is not available yet.` });
   };
 
   const getManagerName = (managerId: string | null) => {

@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { motion } from "framer-motion";
 import AddUserPanel from "@/components/AddUserPanel";
+import { useToast } from "@/hooks/use-toast";
 
 interface UserRow {
   id: string;
