@@ -52,7 +52,7 @@ const App = () => (
             path="/manager-dashboard"
             element={
               <ProtectedRoute requiredRole="manager">
-                <ManagerDashboard />
+                <HRDashboard />
               </ProtectedRoute>
             }
           />
