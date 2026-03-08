@@ -42,6 +42,7 @@ const AdminDashboard = () => {
   const [hiringManagers, setHiringManagers] = useState<UserRow[]>([]);
   const [panelOpen, setPanelOpen] = useState(false);
   const [panelType, setPanelType] = useState<"hr" | "manager">("hr");
+  const { toast } = useToast();
 
   const fetchData = async () => {
     const { data: { session } } = await supabase.auth.getSession();
