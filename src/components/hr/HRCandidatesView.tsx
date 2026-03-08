@@ -3,7 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { FileText, ArrowRight, XCircle, BookOpen, Eye, Loader2, Video, Play, Code2 } from "lucide-react";
+import { FileText, ArrowRight, XCircle, BookOpen, Eye, Loader2, Video, Play, Code2, Filter, CheckCheck } from "lucide-react";
+import { Slider } from "@/components/ui/slider";
 import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -85,6 +86,9 @@ const HRCandidatesView = ({ companyId }: Props) => {
   const [videoSignedUrl, setVideoSignedUrl] = useState<string | null>(null);
   const [currentUserRole, setCurrentUserRole] = useState<string>("hr");
   const [currentUserName, setCurrentUserName] = useState<string>("");
+  const [cutoffDialogOpen, setCutoffDialogOpen] = useState(false);
+  const [cutoffScore, setCutoffScore] = useState(60);
+  const [bulkApproving, setBulkApproving] = useState(false);
   const { toast } = useToast();
 
   // Detect current user role and name
@@ -420,6 +424,58 @@ const HRCandidatesView = ({ companyId }: Props) => {
     return next;
   };
 
+  // Candidates eligible for cutoff auto-approve (test_completed with scores)
+  const testCompletedApps = applications.filter(
+    (a) => a.current_stage === "test_completed" && a.test_score !== null
+  );
+  const qualifyingApps = testCompletedApps.filter((a) => (a.test_score ?? 0) >= cutoffScore);
+
+  const handleBulkApprove = async () => {
+    if (qualifyingApps.length === 0) return;
+    setBulkApproving(true);
+
+    try {
+      // Bulk update all qualifying candidates to video_intro
+      for (const app of qualifyingApps) {
+        await supabase
+          .from("applications")
+          .update({ current_stage: "video_intro" })
+          .eq("id", app.id);
+
+        // Send notification to each candidate
+        const { data: candidateUser } = await supabase
+          .from("users")
+          .select("id")
+          .eq("id", app.candidate_id)
+          .maybeSingle();
+
+        if (candidateUser) {
+          await supabase.from("notifications").insert({
+            user_id: candidateUser.id,
+            title: "🎉 Aptitude Test Cleared!",
+            message: `Congratulations! You scored ${app.test_score}% and cleared the aptitude test. Next step: Video Introduction. Login to record your video.`,
+          });
+        }
+      }
+
+      await notifyHROfManagerAction(
+        "📊 Bulk Cutoff Approval",
+        `${currentUserName} auto-approved ${qualifyingApps.length} candidates with aptitude score ≥ ${cutoffScore}% for Video Introduction.`
+      );
+
+      toast({
+        title: `✅ ${qualifyingApps.length} candidates approved!`,
+        description: `All candidates scoring ≥ ${cutoffScore}% moved to Video Introduction.`,
+      });
+
+      setCutoffDialogOpen(false);
+      fetchApplications();
+    } catch (e: any) {
+      toast({ title: "Error", description: e.message, variant: "destructive" });
+    }
+    setBulkApproving(false);
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -431,8 +487,19 @@ const HRCandidatesView = ({ companyId }: Props) => {
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
       <div className="rounded-xl border border-border bg-card">
-        <div className="px-6 py-4 border-b border-border">
+        <div className="px-6 py-4 border-b border-border flex items-center justify-between gap-4">
           <h2 className="text-lg font-semibold text-foreground">All Candidates ({applications.length})</h2>
+          {testCompletedApps.length > 0 && currentUserRole === "manager" && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setCutoffDialogOpen(true)}
+              className="gap-2 text-xs"
+            >
+              <Filter className="h-3.5 w-3.5" />
+              Auto-Approve by Cutoff ({testCompletedApps.length} pending)
+            </Button>
+          )}
         </div>
 
         {applications.length === 0 ? (
@@ -948,6 +1015,93 @@ const HRCandidatesView = ({ companyId }: Props) => {
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Cutoff Score Auto-Approve Dialog */}
+      <Dialog open={cutoffDialogOpen} onOpenChange={setCutoffDialogOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Filter className="h-5 w-5 text-primary" />
+              Auto-Approve by Cutoff Score
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-6">
+            <div>
+              <p className="text-sm text-muted-foreground mb-4">
+                Set a minimum aptitude test score. All candidates scoring at or above this cutoff will automatically move to the <strong>Video Introduction</strong> round.
+              </p>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-foreground">Cutoff Score</span>
+                  <span className="text-2xl font-bold text-primary">{cutoffScore}%</span>
+                </div>
+                <Slider
+                  value={[cutoffScore]}
+                  onValueChange={(val) => setCutoffScore(val[0])}
+                  min={0}
+                  max={100}
+                  step={5}
+                  className="w-full"
+                />
+                <div className="flex justify-between text-xs text-muted-foreground">
+                  <span>0%</span>
+                  <span>50%</span>
+                  <span>100%</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Preview */}
+            <div className="rounded-lg border border-border bg-muted/50 p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-foreground">Candidates qualifying</span>
+                <span className="text-lg font-bold text-primary">
+                  {qualifyingApps.length} / {testCompletedApps.length}
+                </span>
+              </div>
+              {qualifyingApps.length > 0 && (
+                <div className="max-h-40 overflow-y-auto space-y-1">
+                  {qualifyingApps.map((app) => (
+                    <div key={app.id} className="flex items-center justify-between text-sm py-1 px-2 rounded bg-card">
+                      <span className="text-foreground">{app.candidate_name}</span>
+                      <span className={`font-bold ${(app.test_score ?? 0) >= 70 ? "text-primary" : "text-amber-500"}`}>
+                        {app.test_score}%
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {qualifyingApps.length === 0 && (
+                <p className="text-xs text-muted-foreground text-center py-2">
+                  No candidates meet this cutoff. Try lowering the score.
+                </p>
+              )}
+            </div>
+
+            <div className="flex gap-3">
+              <Button
+                variant="outline"
+                onClick={() => setCutoffDialogOpen(false)}
+                className="flex-1"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleBulkApprove}
+                disabled={qualifyingApps.length === 0 || bulkApproving}
+                className="flex-1 gap-2 bg-primary text-primary-foreground"
+              >
+                {bulkApproving ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <CheckCheck className="h-4 w-4" />
+                )}
+                {bulkApproving ? "Approving..." : `Approve ${qualifyingApps.length} Candidates`}
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </motion.div>
