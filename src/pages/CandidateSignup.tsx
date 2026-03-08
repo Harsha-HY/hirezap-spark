@@ -55,13 +55,11 @@ const CandidateSignup = () => {
       return;
     }
 
-    // Sign out so user must log in
-    await supabase.auth.signOut();
-
     toast({
       title: "✅ Account created!",
-      description: "Please login to continue.",
+      description: "Redirecting to your dashboard...",
     });
+
 
     setTimeout(() => navigate("/candidate-dashboard"), 1500);
     setLoading(false);
