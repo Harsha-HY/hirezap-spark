@@ -364,10 +364,8 @@ const HRCandidatesView = ({ companyId }: Props) => {
     const idx = stageFlow.indexOf(current);
     if (idx === -1 || idx >= stageFlow.length - 2) return null;
     const next = stageFlow[idx + 1];
-    if (next === "aptitude_test") return null;
-    if (next === "test_completed") return null;
-    if (next === "video_intro") return null;
-    if (next === "video_submitted") return null;
+    // These stages are handled by specific buttons, not generic "next"
+    if (["aptitude_test", "test_completed", "video_intro", "video_submitted"].includes(next)) return null;
     return next;
   };
 
