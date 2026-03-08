@@ -21,7 +21,7 @@ interface UserRow {
 }
 
 const navItems = [
-  { icon: LayoutDashboard, label: "Dashboard", active: true },
+  { icon: LayoutDashboard, label: "Dashboard" },
   { icon: UserCheck, label: "HR Managers" },
   { icon: UserCog, label: "Hiring Managers" },
   { icon: Users, label: "Candidates" },
