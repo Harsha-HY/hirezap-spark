@@ -95,6 +95,8 @@ const HRCandidatesView = ({ companyId }: Props) => {
   const [cutoffDialogOpen, setCutoffDialogOpen] = useState(false);
   const [cutoffScore, setCutoffScore] = useState(60);
   const [bulkApproving, setBulkApproving] = useState(false);
+  const [technicalReportDialog, setTechnicalReportDialog] = useState<any>(null);
+  const [technicalAssessment, setTechnicalAssessment] = useState<any>(null);
   const { toast } = useToast();
 
   // Detect current user role and name
