@@ -94,6 +94,66 @@ const HRDashboard = () => {
 
   useEffect(() => { fetchData(); }, []);
 
+  // Fetch notifications
+  const fetchNotifications = useCallback(async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return;
+
+    const { data: userData } = await supabase
+      .from("users")
+      .select("id")
+      .eq("user_id", session.user.id)
+      .maybeSingle();
+
+    if (!userData) return;
+
+    const { data } = await supabase
+      .from("notifications")
+      .select("*")
+      .eq("user_id", userData.id)
+      .order("created_at", { ascending: false })
+      .limit(20);
+
+    if (data) setNotifications(data as any);
+  }, []);
+
+  useEffect(() => { fetchNotifications(); }, [fetchNotifications]);
+
+  // Subscribe to realtime notifications
+  useEffect(() => {
+    const channel = supabase
+      .channel("hr-notifications")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "notifications" },
+        (payload) => {
+          const newNotif = payload.new as any;
+          setNotifications((prev) => [newNotif, ...prev]);
+
+          // Show popup
+          setLatestNotif({ title: newNotif.title, message: newNotif.message });
+          setTimeout(() => setLatestNotif(null), 8000);
+
+          // Add to live activity
+          setLiveActivities((prev) => [
+            { message: newNotif.message, time: "Just now" },
+            ...prev.slice(0, 9),
+          ]);
+
+          // Refresh jobs to update application counts
+          fetchData();
+
+          toast({
+            title: `🔔 ${newNotif.title}`,
+            description: newNotif.message.substring(0, 100) + "...",
+          });
+        }
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, []);
+
   const handleLogout = async () => {
     await supabase.auth.signOut();
     navigate("/login");
