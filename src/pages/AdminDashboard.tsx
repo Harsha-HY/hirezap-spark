@@ -33,6 +33,7 @@ const navItems = [
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
+  const [activeNav, setActiveNav] = useState("Dashboard");
   const [adminName, setAdminName] = useState("");
   const [companyName, setCompanyName] = useState("");
   const [companyId, setCompanyId] = useState("");
