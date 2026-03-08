@@ -891,7 +891,8 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      is_candidate_in_gd: { Args: { p_gd_id: string }; Returns: boolean }
+      is_staff_for_gd: { Args: { p_gd_id: string }; Returns: boolean }
     }
     Enums: {
       [_ in never]: never
