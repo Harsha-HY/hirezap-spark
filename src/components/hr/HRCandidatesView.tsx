@@ -99,11 +99,14 @@ const HRCandidatesView = ({ companyId }: Props) => {
   const [candidatePhotoUrl, setCandidatePhotoUrl] = useState<string | null>(null);
   const [generatingTestFor, setGeneratingTestFor] = useState<string | null>(null);
   const [generatingTechnicalFor, setGeneratingTechnicalFor] = useState<string | null>(null);
+  const [bulkGeneratingAptitude, setBulkGeneratingAptitude] = useState(false);
+  const [bulkGeneratingTechnical, setBulkGeneratingTechnical] = useState(false);
   const [videoDialog, setVideoDialog] = useState<any>(null);
   const [videoSignedUrl, setVideoSignedUrl] = useState<string | null>(null);
   const [analyzingVideo, setAnalyzingVideo] = useState(false);
   const [currentUserRole, setCurrentUserRole] = useState<string>("hr");
   const [currentUserName, setCurrentUserName] = useState<string>("");
+  const [currentUserId, setCurrentUserId] = useState<string>("");
   const [cutoffDialogOpen, setCutoffDialogOpen] = useState(false);
   const [cutoffScore, setCutoffScore] = useState(60);
   const [bulkApproving, setBulkApproving] = useState(false);
