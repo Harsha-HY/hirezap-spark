@@ -99,11 +99,14 @@ const HRCandidatesView = ({ companyId }: Props) => {
   const [candidatePhotoUrl, setCandidatePhotoUrl] = useState<string | null>(null);
   const [generatingTestFor, setGeneratingTestFor] = useState<string | null>(null);
   const [generatingTechnicalFor, setGeneratingTechnicalFor] = useState<string | null>(null);
+  const [bulkGeneratingAptitude, setBulkGeneratingAptitude] = useState(false);
+  const [bulkGeneratingTechnical, setBulkGeneratingTechnical] = useState(false);
   const [videoDialog, setVideoDialog] = useState<any>(null);
   const [videoSignedUrl, setVideoSignedUrl] = useState<string | null>(null);
   const [analyzingVideo, setAnalyzingVideo] = useState(false);
   const [currentUserRole, setCurrentUserRole] = useState<string>("hr");
   const [currentUserName, setCurrentUserName] = useState<string>("");
+  const [currentUserId, setCurrentUserId] = useState<string>("");
   const [cutoffDialogOpen, setCutoffDialogOpen] = useState(false);
   const [cutoffScore, setCutoffScore] = useState(60);
   const [bulkApproving, setBulkApproving] = useState(false);
@@ -116,10 +119,11 @@ const HRCandidatesView = ({ companyId }: Props) => {
     (async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
-      const { data } = await supabase.from("users").select("role, full_name").eq("user_id", session.user.id).maybeSingle();
+      const { data } = await supabase.from("users").select("id, role, full_name").eq("user_id", session.user.id).maybeSingle();
       if (data) {
         setCurrentUserRole(data.role);
         setCurrentUserName(data.full_name);
+        setCurrentUserId(data.id);
       }
     })();
   }, []);
@@ -233,6 +237,17 @@ const HRCandidatesView = ({ companyId }: Props) => {
   };
 
   const handleUpdateStage = async (appId: string, newStage: string) => {
+    // Optimistic update — instant UI change
+    const appData = applications.find((a) => a.id === appId);
+    setApplications((prev) =>
+      prev.map((a) =>
+        a.id === appId
+          ? { ...a, current_stage: newStage, status: newStage === "rejected" ? "rejected" : "active" }
+          : a
+      )
+    );
+    toast({ title: "Updated", description: `Candidate moved to ${stageLabel[newStage]}.` });
+
     const { error } = await supabase
       .from("applications")
       .update({ current_stage: newStage, status: newStage === "rejected" ? "rejected" : "active" })
@@ -240,16 +255,14 @@ const HRCandidatesView = ({ companyId }: Props) => {
 
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
+      fetchApplications(); // revert on error
       return;
     }
 
-    const appData = applications.find((a) => a.id === appId);
-    toast({ title: "Updated", description: `Candidate moved to ${stageLabel[newStage]}.` });
     await notifyHROfManagerAction(
       "Manager Action",
       `${currentUserName} moved ${appData?.candidate_name || "a candidate"} to ${stageLabel[newStage] || newStage}.`
     );
-    fetchApplications();
   };
 
   const handleOpenAptitudeTest = async (app: Application & { candidate_name: string; job_title: string }) => {
@@ -340,7 +353,12 @@ const HRCandidatesView = ({ companyId }: Props) => {
   };
 
   const handleOpenVideoIntro = async (app: any) => {
-    // Move candidate to video_intro stage and notify
+    // Optimistic update
+    setApplications((prev) =>
+      prev.map((a) => a.id === app.id ? { ...a, current_stage: "video_intro" } : a)
+    );
+    toast({ title: "✅ Video Round Opened", description: `Candidate has been notified to record their video introduction.` });
+
     const { error } = await supabase
       .from("applications")
       .update({ current_stage: "video_intro" })
@@ -348,10 +366,10 @@ const HRCandidatesView = ({ companyId }: Props) => {
 
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
+      fetchApplications();
       return;
     }
 
-    // Get candidate user record for notification
     const { data: candidateUser } = await supabase
       .from("users")
       .select("id")
@@ -370,8 +388,6 @@ const HRCandidatesView = ({ companyId }: Props) => {
       "🎥 Video Round Opened",
       `${currentUserName} opened video introduction for ${app.candidate_name || "a candidate"}.`
     );
-    toast({ title: "✅ Video Round Opened", description: `Candidate has been notified to record their video introduction.` });
-    fetchApplications();
   };
 
   const pollForAnalysis = async (appId: string) => {
@@ -476,7 +492,10 @@ const HRCandidatesView = ({ companyId }: Props) => {
       if (error) throw error;
 
       if (data?.assessmentId) {
-        // Update stage to technical_round (pending approval)
+        // Optimistic update
+        setApplications((prev) =>
+          prev.map((a) => a.id === app.id ? { ...a, current_stage: "technical_round" } : a)
+        );
         await supabase.from("applications").update({ current_stage: "technical_round" }).eq("id", app.id);
         toast({
           title: "🤖 Technical questions generated!",
@@ -530,19 +549,96 @@ const HRCandidatesView = ({ companyId }: Props) => {
   );
   const qualifyingApps = testCompletedApps.filter((a) => (a.test_score ?? 0) >= cutoffScore);
 
+  // Candidates eligible for bulk aptitude generation
+  const aptitudeEligibleApps = applications.filter(
+    (a) => ["ai_scored", "shortlisted"].includes(a.current_stage)
+  );
+
+  // Candidates eligible for bulk technical generation
+  const technicalEligibleApps = applications.filter(
+    (a) => a.current_stage === "video_submitted"
+  );
+
+  const handleBulkGenerateAptitude = async () => {
+    if (aptitudeEligibleApps.length === 0) return;
+    setBulkGeneratingAptitude(true);
+
+    try {
+      let successCount = 0;
+      for (const app of aptitudeEligibleApps) {
+        try {
+          const { data, error } = await supabase.functions.invoke("generate-assessment", {
+            body: {
+              jobId: app.job_id,
+              applicationId: app.id,
+              companyId,
+              createdBy: currentUserId,
+            },
+          });
+          if (!error && data?.assessmentId) successCount++;
+        } catch {
+          // Continue with next candidate
+        }
+      }
+
+      toast({
+        title: `✅ Generated for ${successCount}/${aptitudeEligibleApps.length} candidates`,
+        description: "Aptitude questions created. Review each before sending.",
+      });
+      fetchApplications();
+    } catch (e: any) {
+      toast({ title: "Error", description: e.message, variant: "destructive" });
+    }
+    setBulkGeneratingAptitude(false);
+  };
+
+  const handleBulkGenerateTechnical = async () => {
+    if (technicalEligibleApps.length === 0) return;
+    setBulkGeneratingTechnical(true);
+
+    try {
+      let successCount = 0;
+      for (const app of technicalEligibleApps) {
+        try {
+          const { data, error } = await supabase.functions.invoke("generate-technical", {
+            body: {
+              jobId: app.job_id,
+              applicationId: app.id,
+              companyId,
+              createdBy: currentUserId,
+            },
+          });
+          if (!error && data?.assessmentId) {
+            await supabase.from("applications").update({ current_stage: "technical_round" }).eq("id", app.id);
+            successCount++;
+          }
+        } catch {
+          // Continue with next candidate
+        }
+      }
+
+      toast({
+        title: `✅ Generated for ${successCount}/${technicalEligibleApps.length} candidates`,
+        description: "Technical questions created. Review each before sending.",
+      });
+      fetchApplications();
+    } catch (e: any) {
+      toast({ title: "Error", description: e.message, variant: "destructive" });
+    }
+    setBulkGeneratingTechnical(false);
+  };
+
   const handleBulkApprove = async () => {
     if (qualifyingApps.length === 0) return;
     setBulkApproving(true);
 
     try {
-      // Bulk update all qualifying candidates to video_intro
       for (const app of qualifyingApps) {
         await supabase
           .from("applications")
           .update({ current_stage: "video_intro" })
           .eq("id", app.id);
 
-        // Send notification to each candidate
         const { data: candidateUser } = await supabase
           .from("users")
           .select("id")
@@ -587,19 +683,45 @@ const HRCandidatesView = ({ companyId }: Props) => {
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
       <div className="rounded-xl border border-border bg-card">
-        <div className="px-6 py-4 border-b border-border flex items-center justify-between gap-4">
+        <div className="px-6 py-4 border-b border-border flex items-center justify-between gap-4 flex-wrap">
           <h2 className="text-lg font-semibold text-foreground">All Candidates ({applications.length})</h2>
-          {testCompletedApps.length > 0 && currentUserRole === "manager" && (
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => setCutoffDialogOpen(true)}
-              className="gap-2 text-xs"
-            >
-              <Filter className="h-3.5 w-3.5" />
-              Auto-Approve by Cutoff ({testCompletedApps.length} pending)
-            </Button>
-          )}
+          <div className="flex items-center gap-2 flex-wrap">
+            {aptitudeEligibleApps.length > 0 && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleBulkGenerateAptitude}
+                disabled={bulkGeneratingAptitude}
+                className="gap-2 text-xs"
+              >
+                {bulkGeneratingAptitude ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <BookOpen className="h-3.5 w-3.5" />}
+                {bulkGeneratingAptitude ? "Generating..." : `Generate Aptitude for All (${aptitudeEligibleApps.length})`}
+              </Button>
+            )}
+            {technicalEligibleApps.length > 0 && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleBulkGenerateTechnical}
+                disabled={bulkGeneratingTechnical}
+                className="gap-2 text-xs"
+              >
+                {bulkGeneratingTechnical ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Code2 className="h-3.5 w-3.5" />}
+                {bulkGeneratingTechnical ? "Generating..." : `Generate Technical for All (${technicalEligibleApps.length})`}
+              </Button>
+            )}
+            {testCompletedApps.length > 0 && currentUserRole === "manager" && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setCutoffDialogOpen(true)}
+                className="gap-2 text-xs"
+              >
+                <Filter className="h-3.5 w-3.5" />
+                Auto-Approve by Cutoff ({testCompletedApps.length} pending)
+              </Button>
+            )}
+          </div>
         </div>
 
         {applications.length === 0 ? (
