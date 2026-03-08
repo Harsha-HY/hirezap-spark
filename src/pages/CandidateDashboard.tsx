@@ -297,6 +297,15 @@ const CandidateDashboard = () => {
                               🎥 Record Video
                             </Button>
                           )}
+                          {isCurrent && stage.key === "technical_round" && rawStage === "technical_test" && (
+                            <Button
+                              size="sm"
+                              onClick={() => navigate("/technical-test")}
+                              className="bg-primary text-primary-foreground h-7 px-3 text-xs"
+                            >
+                              💻 Take Technical Test
+                            </Button>
+                          )}
                         </div>
                       </div>
                     );
