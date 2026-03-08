@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Briefcase, MapPin, DollarSign, Clock, Zap, X } from "lucide-react";
+import { Briefcase, MapPin, DollarSign, Clock, Zap, X, Target } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Slider } from "@/components/ui/slider";
 
 interface AddJobPanelProps {
   open: boolean;
@@ -33,6 +34,7 @@ const AddJobPanel = ({ open, onOpenChange, companyId, hrUserId, managers, onJobC
     experienceMax: "",
     skills: [] as string[],
     description: "",
+    aptitudeCutoff: 60,
   });
 
   const update = (key: string, value: string) => setForm((p) => ({ ...p, [key]: value }));
