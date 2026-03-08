@@ -852,7 +852,12 @@ const HRCandidatesView = ({ companyId }: Props) => {
                             />
                           )}
                           <div>
-                            <p className="font-medium text-foreground">{app.candidate_name}</p>
+                            <button
+                              onClick={() => handleViewCandidateDetails(app)}
+                              className="font-medium text-foreground hover:text-primary hover:underline cursor-pointer text-left"
+                            >
+                              {app.candidate_name}
+                            </button>
                             <p className="text-xs text-muted-foreground">{app.candidate_email}</p>
                           </div>
                         </div>
