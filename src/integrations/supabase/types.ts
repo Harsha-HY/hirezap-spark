@@ -14,8 +14,48 @@ export type Database = {
   }
   public: {
     Tables: {
+      companies: {
+        Row: {
+          company_code: string
+          company_name: string
+          created_at: string
+          id: string
+          industry: string
+          location: string
+          owner_id: string
+          plan: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          company_code: string
+          company_name: string
+          created_at?: string
+          id?: string
+          industry?: string
+          location: string
+          owner_id: string
+          plan?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          company_code?: string
+          company_name?: string
+          created_at?: string
+          id?: string
+          industry?: string
+          location?: string
+          owner_id?: string
+          plan?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       users: {
         Row: {
+          company_id: string | null
           created_at: string
           email: string
           full_name: string
@@ -26,6 +66,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          company_id?: string | null
           created_at?: string
           email: string
           full_name: string
@@ -36,6 +77,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          company_id?: string | null
           created_at?: string
           email?: string
           full_name?: string
@@ -45,7 +87,15 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "users_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
