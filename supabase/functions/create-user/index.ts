@@ -23,7 +23,7 @@ Deno.serve(async (req) => {
     }
 
     // Verify the calling user is a superadmin or owner
-    const userClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_PUBLISHABLE_KEY")!, {
+    const userClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!, {
       global: { headers: { Authorization: authHeader } },
     });
 
