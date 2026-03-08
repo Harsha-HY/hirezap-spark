@@ -595,8 +595,13 @@ const HRCandidatesView = ({ companyId }: Props) => {
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => handleUpdateStage(app.id, "rejected")}
+                              onClick={() => {
+                                // Soft remove: just hide from active list
+                                setApplications((prev) => prev.filter((a) => a.id !== app.id));
+                                toast({ title: "Removed", description: `${app.candidate_name} removed from the list.` });
+                              }}
                               className="text-destructive hover:text-destructive text-xs"
+                              title="Remove from list"
                             >
                               <XCircle className="h-3.5 w-3.5" />
                             </Button>

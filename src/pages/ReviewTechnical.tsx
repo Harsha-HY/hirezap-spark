@@ -199,23 +199,20 @@ const ReviewTechnical = () => {
   };
 
   const handleApprove = async () => {
+    if (userRole !== "manager") {
+      toast({ title: "Not Authorized", description: "Only the Hiring Manager can approve technical questions.", variant: "destructive" });
+      return;
+    }
+
     setApproving(true);
     try {
-      const updateData: any = {};
-      if (userRole === "hr") {
-        updateData.hr_approved = true;
-        updateData.hr_approved_at = new Date().toISOString();
-      } else {
-        updateData.manager_approved = true;
-        updateData.manager_approved_at = new Date().toISOString();
-      }
-
-      // Check if other role already approved
-      const otherApproved = userRole === "hr" ? assessment.manager_approved : assessment.hr_approved;
-      if (otherApproved) {
-        updateData.status = "approved";
-        updateData.approved_at = new Date().toISOString();
-      }
+      // Manager-only approval
+      const updateData: any = {
+        manager_approved: true,
+        manager_approved_at: new Date().toISOString(),
+        status: "approved",
+        approved_at: new Date().toISOString(),
+      };
 
       await supabase.from("assessments").update(updateData).eq("id", assessmentId);
 
@@ -223,42 +220,35 @@ const ReviewTechnical = () => {
       const { data: refreshed } = await supabase.from("assessments").select("*").eq("id", assessmentId).maybeSingle();
       if (refreshed) setAssessment(refreshed);
 
-      // Notify other staff
-      const { data: staffUsers } = await supabase
+      // Notify HR users
+      const { data: hrUsers } = await supabase
         .from("users")
-        .select("id, role")
+        .select("id")
         .eq("company_id", assessment.company_id)
-        .in("role", ["hr", "manager"])
-        .neq("id", userId);
+        .eq("role", "hr");
 
-      if (staffUsers) {
-        const notifs = staffUsers.map((s) => ({
+      if (hrUsers && hrUsers.length > 0) {
+        const notifs = hrUsers.map((s) => ({
           user_id: s.id,
           title: "✅ Technical Questions Approved",
-          message: `${userRole === "hr" ? "HR" : "Hiring Manager"} approved technical questions for ${candidateName}.${otherApproved ? " Both approved — test will be sent to candidate!" : " Waiting for your approval."}`,
+          message: `Hiring Manager approved technical questions for ${candidateName}. Test has been sent to the candidate.`,
         }));
-        if (notifs.length > 0) await supabase.from("notifications").insert(notifs);
+        await supabase.from("notifications").insert(notifs);
       }
 
-      // If both approved, notify candidate
-      if (otherApproved) {
-        const { data: app } = await supabase.from("applications").select("candidate_id").eq("id", assessment.application_id).maybeSingle();
-        if (app) {
-          await supabase.from("applications").update({ current_stage: "technical_test" }).eq("id", assessment.application_id);
-          await supabase.from("notifications").insert({
-            user_id: app.candidate_id,
-            title: "💻 Technical Round Ready!",
-            message: "Congratulations! You are selected for the Technical Round. Login to take your technical test. Complete within 48 hours.",
-          });
-        }
-        toast({ title: "Both Approved!", description: "Technical test sent to candidate." });
-      } else {
-        toast({ title: "Approved!", description: `Waiting for ${userRole === "hr" ? "Manager" : "HR"} approval.` });
+      // Approve → notify candidate and update stage
+      const { data: app } = await supabase.from("applications").select("candidate_id").eq("id", assessment.application_id).maybeSingle();
+      if (app) {
+        await supabase.from("applications").update({ current_stage: "technical_test" }).eq("id", assessment.application_id);
+        await supabase.from("notifications").insert({
+          user_id: app.candidate_id,
+          title: "💻 Technical Round Ready!",
+          message: "Congratulations! You are selected for the Technical Round. Login to take your technical test. Complete within 48 hours.",
+        });
       }
 
-      if (otherApproved) {
-        navigate(userRole === "manager" ? "/manager-dashboard" : "/hr-dashboard");
-      }
+      toast({ title: "Approved!", description: "Technical test sent to candidate. HR has been notified." });
+      navigate("/manager-dashboard");
     } catch (e: any) {
       toast({ title: "Error", description: e.message, variant: "destructive" });
     }
@@ -321,9 +311,8 @@ const ReviewTechnical = () => {
   };
 
   const totalQuestions = dsaProblems.length + codingTasks.length + mcqQuestions.length;
-  const hrApproved = assessment?.hr_approved;
   const managerApproved = assessment?.manager_approved;
-  const currentUserApproved = userRole === "hr" ? hrApproved : managerApproved;
+  const isApproved = assessment?.status === "approved";
 
   if (loading) {
     return (
@@ -367,23 +356,20 @@ const ReviewTechnical = () => {
           <h3 className="text-sm font-semibold text-foreground mb-3">Approval Status</h3>
           <div className="flex items-center gap-6">
             <div className="flex items-center gap-2">
-              {hrApproved ? (
+              {isApproved ? (
                 <CheckCircle2 className="h-5 w-5 text-primary" />
               ) : (
                 <Clock className="h-5 w-5 text-amber-500" />
               )}
-              <span className="text-sm">HR Approval: <strong>{hrApproved ? "✅ Approved" : "⏳ Pending"}</strong></span>
+              <span className="text-sm">
+                Manager Approval: <strong>{managerApproved ? "✅ Approved" : "⏳ Pending"}</strong>
+              </span>
             </div>
-            <div className="flex items-center gap-2">
-              {managerApproved ? (
-                <CheckCircle2 className="h-5 w-5 text-primary" />
-              ) : (
-                <Clock className="h-5 w-5 text-amber-500" />
-              )}
-              <span className="text-sm">Manager Approval: <strong>{managerApproved ? "✅ Approved" : "⏳ Pending"}</strong></span>
-            </div>
+            {userRole === "hr" && (
+              <span className="text-xs text-muted-foreground italic">Only the Hiring Manager can approve. You will be notified.</span>
+            )}
           </div>
-          {!currentUserApproved && (
+          {userRole === "manager" && !managerApproved && (
             <div className="mt-4 flex gap-2">
               <Button onClick={handleApprove} disabled={approving} className="bg-primary text-primary-foreground">
                 {approving ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Check className="h-4 w-4 mr-1" />}

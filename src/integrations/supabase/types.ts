@@ -19,6 +19,7 @@ export type Database = {
           ai_analysis: Json | null
           applied_at: string
           candidate_id: string
+          code_answers: Json | null
           cover_letter: string | null
           current_company: string
           current_ctc: number
@@ -43,6 +44,7 @@ export type Database = {
           ai_analysis?: Json | null
           applied_at?: string
           candidate_id: string
+          code_answers?: Json | null
           cover_letter?: string | null
           current_company: string
           current_ctc: number
@@ -67,6 +69,7 @@ export type Database = {
           ai_analysis?: Json | null
           applied_at?: string
           candidate_id?: string
+          code_answers?: Json | null
           cover_letter?: string | null
           current_company?: string
           current_ctc?: number
