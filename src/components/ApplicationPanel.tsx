@@ -63,10 +63,10 @@ const ApplicationPanel = ({ open, onOpenChange, job, onSuccess }: ApplicationPan
       return;
     }
 
-    let resumeUrl: string | null = null;
+    let resumePath: string | null = null;
     let photoUrl: string | null = null;
 
-    // Upload resume
+    // Upload resume (private bucket -> store object path, not public URL)
     if (resumeFile) {
       const path = `${userData.id}/${Date.now()}_${resumeFile.name}`;
       const { error: uploadErr } = await supabase.storage.from("resumes").upload(path, resumeFile);
@@ -75,8 +75,7 @@ const ApplicationPanel = ({ open, onOpenChange, job, onSuccess }: ApplicationPan
         setLoading(false);
         return;
       }
-      const { data: urlData } = supabase.storage.from("resumes").getPublicUrl(path);
-      resumeUrl = urlData.publicUrl;
+      resumePath = path;
     }
 
     // Upload photo
@@ -92,52 +91,39 @@ const ApplicationPanel = ({ open, onOpenChange, job, onSuccess }: ApplicationPan
       photoUrl = urlData.publicUrl;
     }
 
-    const { error } = await supabase.from("applications").insert({
-      candidate_id: userData.id,
-      job_id: job.id,
-      current_company: currentCompany,
-      current_ctc: parseFloat(currentCtc),
-      expected_ctc: parseFloat(expectedCtc),
-      notice_period: parseInt(noticePeriod),
-      experience_years: parseFloat(experienceYears),
-      resume_url: resumeUrl,
-      photo_url: photoUrl,
-      cover_letter: coverLetter || null,
-      current_stage: "applied",
-      status: "active",
-    });
+    const { data: insertedApplication, error } = await supabase
+      .from("applications")
+      .insert({
+        candidate_id: userData.id,
+        job_id: job.id,
+        current_company: currentCompany,
+        current_ctc: parseFloat(currentCtc),
+        expected_ctc: parseFloat(expectedCtc),
+        notice_period: parseInt(noticePeriod),
+        experience_years: parseFloat(experienceYears),
+        resume_url: resumePath,
+        photo_url: photoUrl,
+        cover_letter: coverLetter || null,
+        current_stage: "applied",
+        status: "active",
+      })
+      .select("id")
+      .single();
 
-    if (error) {
-      toast({ title: "Submission failed", description: error.message, variant: "destructive" });
+    if (error || !insertedApplication) {
+      toast({ title: "Submission failed", description: error?.message || "Could not save application", variant: "destructive" });
       setLoading(false);
       return;
     }
 
-    toast({
-      title: "✅ Application submitted successfully!",
-      description: "We will review and get back to you.",
-    });
-
-    // Trigger AI resume scoring in background (don't await - let it run async)
-    if (resumeUrl) {
-      // Get the application ID from the insert response
-      const { data: appData } = await supabase
-        .from("applications")
-        .select("id")
-        .eq("candidate_id", userData.id)
-        .eq("job_id", job.id)
-        .order("applied_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (appData) {
-        supabase.functions.invoke("score-resume", {
-          body: { applicationId: appData.id },
-        }).then((res) => {
-          if (res.error) console.error("AI scoring error:", res.error);
-          else console.log("AI scoring complete:", res.data);
-        });
-      }
+    // Trigger AI resume scoring in background (don't block UX)
+    if (resumePath) {
+      supabase.functions.invoke("score-resume", {
+        body: { applicationId: insertedApplication.id },
+      }).then((res) => {
+        if (res.error) console.error("AI scoring error:", res.error);
+        else console.log("AI scoring complete:", res.data);
+      });
     }
 
     resetForm();
