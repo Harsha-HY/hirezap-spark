@@ -87,6 +87,7 @@ const HRCandidatesView = ({ companyId }: Props) => {
   const [generatingTechnicalFor, setGeneratingTechnicalFor] = useState<string | null>(null);
   const [videoDialog, setVideoDialog] = useState<any>(null);
   const [videoSignedUrl, setVideoSignedUrl] = useState<string | null>(null);
+  const [analyzingVideo, setAnalyzingVideo] = useState(false);
   const [currentUserRole, setCurrentUserRole] = useState<string>("hr");
   const [currentUserName, setCurrentUserName] = useState<string>("");
   const [cutoffDialogOpen, setCutoffDialogOpen] = useState(false);
