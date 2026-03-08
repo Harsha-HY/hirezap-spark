@@ -218,6 +218,7 @@ export type Database = {
       jobs: {
         Row: {
           applications_count: number
+          aptitude_cutoff: number | null
           company_id: string
           created_at: string
           department: string
@@ -238,6 +239,7 @@ export type Database = {
         }
         Insert: {
           applications_count?: number
+          aptitude_cutoff?: number | null
           company_id: string
           created_at?: string
           department: string
@@ -258,6 +260,7 @@ export type Database = {
         }
         Update: {
           applications_count?: number
+          aptitude_cutoff?: number | null
           company_id?: string
           created_at?: string
           department?: string
