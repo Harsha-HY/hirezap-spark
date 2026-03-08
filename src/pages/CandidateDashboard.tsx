@@ -229,10 +229,13 @@ const CandidateDashboard = () => {
 
                 <div className="space-y-4">
                   {stages.map((stage, idx) => {
-                    const rawStage = applications[0].current_stage;
+                    const latestApplication = applications[0];
+                    const rawStage = latestApplication.current_stage;
+                    const hasSubmittedCurrentTest = submittedTestAppIds.has(latestApplication.id);
                     const normalizedStage = 
                       rawStage === "applied" || rawStage === "ai_scored" ? "resume_review" 
                       : rawStage === "test_completed" ? "video_intro"
+                      : rawStage === "aptitude_test" && hasSubmittedCurrentTest ? "video_intro"
                       : rawStage === "shortlisted" ? "aptitude_test"
                       : rawStage === "interview" ? "hr_interview"
                       : rawStage === "selected" ? "offer_letter"
@@ -272,7 +275,7 @@ const CandidateDashboard = () => {
                           >
                             {stage.label}
                           </span>
-                          {isCurrent && stage.key === "aptitude_test" && (
+                          {isCurrent && stage.key === "aptitude_test" && !hasSubmittedCurrentTest && (
                             <Button
                               size="sm"
                               onClick={() => navigate("/aptitude-test")}
