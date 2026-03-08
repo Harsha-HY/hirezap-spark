@@ -215,21 +215,44 @@ const HRCandidatesView = ({ companyId }: Props) => {
 
   const handleViewTestResults = async (app: any) => {
     setTestResultDialog(app);
+    setTestQuestions([]);
+    setTestSections([]);
+    setCandidatePhotoUrl(null);
 
-    const { data: answers } = await supabase
-      .from("test_answers")
-      .select("*")
-      .eq("application_id", app.id)
-      .order("question_index", { ascending: true });
+    // Fetch answers, violations, assessment questions, and photo in parallel
+    const [answersRes, violsRes, assessmentRes] = await Promise.all([
+      supabase.from("test_answers").select("*").eq("application_id", app.id).order("question_index", { ascending: true }),
+      supabase.from("test_violations").select("*").eq("application_id", app.id).order("created_at", { ascending: true }),
+      supabase.from("assessments").select("questions").eq("application_id", app.id).maybeSingle(),
+    ]);
 
-    const { data: viols } = await supabase
-      .from("test_violations")
-      .select("*")
-      .eq("application_id", app.id)
-      .order("created_at", { ascending: true });
+    setTestAnswers(answersRes.data || []);
+    setTestViolations(violsRes.data || []);
 
-    setTestAnswers(answers || []);
-    setTestViolations(viols || []);
+    // Parse assessment questions into flat list with section info
+    if (assessmentRes.data?.questions) {
+      const q = assessmentRes.data.questions as any;
+      if (q.sections) {
+        setTestSections(q.sections);
+        const flat: any[] = [];
+        q.sections.forEach((sec: any) => {
+          sec.questions.forEach((question: any) => {
+            flat.push({ ...question, section: sec.name });
+          });
+        });
+        setTestQuestions(flat);
+      }
+    }
+
+    // Get candidate photo
+    if (app.photo_url) {
+      if (app.photo_url.startsWith("http")) {
+        setCandidatePhotoUrl(app.photo_url);
+      } else {
+        const { data: photoData } = await supabase.storage.from("photos").getPublicUrl(app.photo_url);
+        if (photoData?.publicUrl) setCandidatePhotoUrl(photoData.publicUrl);
+      }
+    }
   };
 
   const getVerdict = (analysis: any): string => {
