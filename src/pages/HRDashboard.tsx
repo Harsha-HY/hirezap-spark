@@ -324,8 +324,8 @@ const HRDashboard = () => {
         </nav>
 
         <div className="border-t border-border px-4 py-4">
-          <p className="text-sm font-medium text-foreground truncate">{hrName || "HR Manager"}</p>
-          <p className="text-xs text-muted-foreground mb-3">HR Manager</p>
+          <p className="text-sm font-medium text-foreground truncate">{hrName || (userRole === "manager" ? "Manager" : "HR Manager")}</p>
+          <p className="text-xs text-muted-foreground mb-3">{userRole === "manager" ? "Hiring Manager" : "HR Manager"}</p>
           <button
             onClick={handleLogout}
             className="flex items-center gap-2 text-sm text-muted-foreground hover:text-destructive transition-colors"
