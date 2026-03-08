@@ -98,9 +98,20 @@ const AdminDashboard = () => {
 
   const handleNavClick = (label: string) => {
     setActiveNav(label);
-    if (label === "HR Managers") document.getElementById("hr-managers-section")?.scrollIntoView({ behavior: "smooth", block: "start" });
-    if (label === "Hiring Managers") document.getElementById("hiring-managers-section")?.scrollIntoView({ behavior: "smooth", block: "start" });
-    if (label === "Dashboard") window.scrollTo({ top: 0, behavior: "smooth" });
+
+    const sectionMap: Record<string, string> = {
+      Dashboard: "admin-dashboard-top",
+      "HR Managers": "hr-managers-section",
+      "Hiring Managers": "hiring-managers-section",
+    };
+
+    const sectionId = sectionMap[label];
+    if (sectionId) {
+      document.getElementById(sectionId)?.scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
+
+    toast({ title: "Section unavailable", description: `${label} module is coming soon.` });
   };
 
   const stats = [
