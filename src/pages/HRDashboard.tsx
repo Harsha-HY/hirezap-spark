@@ -167,8 +167,8 @@ const HRDashboard = () => {
 
   const stats = [
     { icon: Briefcase, label: "Total Jobs Posted", value: jobs.length, color: "text-primary" },
-    { icon: Users, label: "Total Applications", value: jobs.reduce((s, j) => s + j.applications_count, 0), color: "text-blue-400" },
-    { icon: Users, label: "Shortlisted", value: 0, color: "text-amber-400" },
+    { icon: Users, label: "Total Applications", value: totalApplications, color: "text-blue-400" },
+    { icon: Users, label: "Shortlisted", value: shortlistedCount, color: "text-amber-400" },
     { icon: Calendar, label: "Interviews Today", value: 0, color: "text-purple-400" },
   ];
 
