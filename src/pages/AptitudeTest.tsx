@@ -209,6 +209,65 @@ const AptitudeTest = () => {
     });
   };
 
+  // Motion & Sound detection
+  useEffect(() => {
+    if (phase !== "test") return;
+
+    const canvas = document.createElement("canvas");
+    canvas.width = 160;
+    canvas.height = 120;
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
+    canvasRef.current = canvas;
+
+    let alertTimeout: ReturnType<typeof setTimeout> | null = null;
+
+    const detectInterval = setInterval(() => {
+      let detected = false;
+
+      // Motion detection via frame diff
+      if (videoRef.current && ctx && videoRef.current.readyState >= 2) {
+        ctx.drawImage(videoRef.current, 0, 0, 160, 120);
+        const currentFrame = ctx.getImageData(0, 0, 160, 120);
+
+        if (prevFrameRef.current) {
+          let diffSum = 0;
+          const prev = prevFrameRef.current.data;
+          const curr = currentFrame.data;
+          for (let i = 0; i < curr.length; i += 16) {
+            diffSum += Math.abs(curr[i] - prev[i]);
+          }
+          const avgDiff = diffSum / (curr.length / 16);
+          // High motion threshold — someone walking by
+          if (avgDiff > 25) {
+            detected = true;
+          }
+        }
+        prevFrameRef.current = currentFrame;
+      }
+
+      // Sound detection
+      if (analyserRef.current) {
+        const dataArray = new Uint8Array(analyserRef.current.frequencyBinCount);
+        analyserRef.current.getByteFrequencyData(dataArray);
+        const avg = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
+        if (avg > 30) {
+          detected = true;
+        }
+      }
+
+      if (detected) {
+        setCameraAlert(true);
+        if (alertTimeout) clearTimeout(alertTimeout);
+        alertTimeout = setTimeout(() => setCameraAlert(false), 2000);
+      }
+    }, 500);
+
+    return () => {
+      clearInterval(detectInterval);
+      if (alertTimeout) clearTimeout(alertTimeout);
+    };
+  }, [phase]);
+
   const startTest = async () => {
     // Request fullscreen
     try {
