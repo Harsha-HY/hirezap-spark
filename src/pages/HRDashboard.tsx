@@ -300,7 +300,28 @@ const HRDashboard = () => {
                 <span className="text-xs font-semibold text-destructive uppercase tracking-wider">Live</span>
               </div>
             </div>
-            <p className="text-muted-foreground text-sm">No activity yet. Post a job to get started.</p>
+            {liveActivities.length === 0 ? (
+              <p className="text-muted-foreground text-sm">No activity yet. Post a job to get started.</p>
+            ) : (
+              <div className="space-y-3">
+                <AnimatePresence>
+                  {liveActivities.map((activity, i) => (
+                    <motion.div
+                      key={i}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      className="flex items-start gap-3 text-sm"
+                    >
+                      <span className="text-primary">📄</span>
+                      <div>
+                        <p className="text-foreground">{activity.message}</p>
+                        <p className="text-xs text-muted-foreground">{activity.time}</p>
+                      </div>
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
+              </div>
+            )}
           </motion.div>
 
           {/* Jobs Section */}
