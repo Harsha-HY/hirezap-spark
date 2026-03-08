@@ -210,7 +210,12 @@ const HRCandidatesView = ({ companyId }: Props) => {
       return;
     }
 
+    const appData = applications.find((a) => a.id === appId);
     toast({ title: "Updated", description: `Candidate moved to ${stageLabel[newStage]}.` });
+    await notifyHROfManagerAction(
+      "Manager Action",
+      `${currentUserName} moved ${appData?.candidate_name || "a candidate"} to ${stageLabel[newStage] || newStage}.`
+    );
     fetchApplications();
   };
 
