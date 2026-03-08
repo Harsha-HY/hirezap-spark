@@ -76,6 +76,7 @@ const HRCandidatesView = ({ companyId }: Props) => {
   const [testSections, setTestSections] = useState<any[]>([]);
   const [candidatePhotoUrl, setCandidatePhotoUrl] = useState<string | null>(null);
   const [generatingTestFor, setGeneratingTestFor] = useState<string | null>(null);
+  const [generatingTechnicalFor, setGeneratingTechnicalFor] = useState<string | null>(null);
   const [videoDialog, setVideoDialog] = useState<any>(null);
   const [videoSignedUrl, setVideoSignedUrl] = useState<string | null>(null);
   const [currentUserRole, setCurrentUserRole] = useState<string>("hr");
