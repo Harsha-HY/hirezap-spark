@@ -282,8 +282,9 @@ const CandidateDashboard = () => {
                       : rawStage === "technical_round" ? "technical_round"
                       : rawStage === "technical_test" ? "technical_round"
                       : rawStage === "technical_completed" ? "group_discussion"
-                      : rawStage === "interview" ? "hr_interview"
-                      : rawStage === "selected" ? "offer_letter"
+                      : rawStage === "gd_completed" ? "hr_interview"
+                      : rawStage === "interview" || rawStage === "hr_interview" ? "hr_interview"
+                      : rawStage === "offer_sent" || rawStage === "hired" || rawStage === "selected" || rawStage === "bgv" || rawStage === "onboarded" ? "offer_letter"
                       : rawStage;
                     const currentIdx = getStageIndex(normalizedStage);
                     const isCompleted = idx < currentIdx;
