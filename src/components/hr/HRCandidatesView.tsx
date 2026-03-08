@@ -349,7 +349,12 @@ const HRCandidatesView = ({ companyId }: Props) => {
   };
 
   const handleOpenVideoIntro = async (app: any) => {
-    // Move candidate to video_intro stage and notify
+    // Optimistic update
+    setApplications((prev) =>
+      prev.map((a) => a.id === app.id ? { ...a, current_stage: "video_intro" } : a)
+    );
+    toast({ title: "✅ Video Round Opened", description: `Candidate has been notified to record their video introduction.` });
+
     const { error } = await supabase
       .from("applications")
       .update({ current_stage: "video_intro" })
@@ -357,10 +362,10 @@ const HRCandidatesView = ({ companyId }: Props) => {
 
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
+      fetchApplications();
       return;
     }
 
-    // Get candidate user record for notification
     const { data: candidateUser } = await supabase
       .from("users")
       .select("id")
@@ -379,8 +384,6 @@ const HRCandidatesView = ({ companyId }: Props) => {
       "🎥 Video Round Opened",
       `${currentUserName} opened video introduction for ${app.candidate_name || "a candidate"}.`
     );
-    toast({ title: "✅ Video Round Opened", description: `Candidate has been notified to record their video introduction.` });
-    fetchApplications();
   };
 
   const pollForAnalysis = async (appId: string) => {
