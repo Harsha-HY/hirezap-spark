@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Zap, Mail, Lock, KeyRound } from "lucide-react";
+import { Zap, Mail, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
@@ -18,7 +18,6 @@ const roleRoutes: Record<string, string> = {
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [companyCode, setCompanyCode] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -45,42 +44,6 @@ const Login = () => {
       .maybeSingle();
 
     if (!userData) {
-      toast({ title: "Invalid credentials", description: "Please check your details.", variant: "destructive" });
-      await supabase.auth.signOut();
-      setLoading(false);
-      return;
-    }
-
-    // Owner: skip company code check entirely
-    if (userData.role === "owner") {
-      localStorage.setItem("userRole", userData.role);
-      navigate(roleRoutes[userData.role] || "/login");
-      setLoading(false);
-      return;
-    }
-
-    // Non-owner roles require company code
-    if (!companyCode.trim()) {
-      toast({ title: "Company code required", description: "Please enter your company code.", variant: "destructive" });
-      await supabase.auth.signOut();
-      setLoading(false);
-      return;
-    }
-
-    if (!userData.company_id) {
-      toast({ title: "Invalid credentials", description: "Please check your details.", variant: "destructive" });
-      await supabase.auth.signOut();
-      setLoading(false);
-      return;
-    }
-
-    const { data: company } = await supabase
-      .from("companies")
-      .select("company_code")
-      .eq("id", userData.company_id)
-      .maybeSingle();
-
-    if (!company || company.company_code !== companyCode.trim()) {
       toast({ title: "Invalid credentials", description: "Please check your details.", variant: "destructive" });
       await supabase.auth.signOut();
       setLoading(false);
@@ -153,17 +116,8 @@ const Login = () => {
             />
           </div>
 
-          {/* Company Code */}
-          <div className="group relative">
-            <KeyRound className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
-            <input
-              type="text"
-              placeholder="Company Code (not required for Owner)"
-              value={companyCode}
-              onChange={(e) => setCompanyCode(e.target.value)}
-              className="w-full rounded-xl border border-border bg-card/60 backdrop-blur-sm py-3.5 pl-11 pr-4 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
-            />
-          </div>
+
+
 
           {/* Password */}
           <div className="group relative">
