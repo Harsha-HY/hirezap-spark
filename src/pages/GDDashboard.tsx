@@ -198,6 +198,55 @@ const GDDashboard = () => {
     fetchData();
   };
 
+  const handleAnalyzeGD = async (gd: GD) => {
+    setAnalyzingGD(gd.id);
+    try {
+      const gdGroups = getGroupsForGD(gd.id);
+      const groupInfoForAI = gdGroups.map(g => ({
+        id: g.id,
+        group_name: g.group_name,
+        candidate_ids: g.candidate_ids,
+      }));
+
+      const { data, error } = await supabase.functions.invoke("analyze-gd", {
+        body: {
+          gdId: gd.id,
+          topic: gd.topic,
+          duration: gd.duration,
+          candidateNames,
+          groupInfo: groupInfoForAI,
+        },
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      toast({ title: "✅ AI Analysis Complete", description: "GD scores generated and candidates notified with personalized feedback." });
+
+      // Notify HR if manager did this
+      if (userRole === "manager") {
+        const { data: hrUsers } = await supabase
+          .from("users")
+          .select("id")
+          .eq("company_id", companyId)
+          .eq("role", "hr");
+
+        for (const hr of (hrUsers || [])) {
+          await supabase.from("notifications").insert({
+            user_id: hr.id,
+            title: "📊 GD Analysis Completed",
+            message: `${userName} completed AI analysis for GD: "${gd.topic}" (${gd.job_title}). ${getCandidateCount(gd.id)} candidates were scored. Review the results and proceed candidates to HR Interview.`,
+          });
+        }
+      }
+
+      fetchData();
+    } catch (e: any) {
+      toast({ title: "Error", description: e.message, variant: "destructive" });
+    }
+    setAnalyzingGD(null);
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-background">
