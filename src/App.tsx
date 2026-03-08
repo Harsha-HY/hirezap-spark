@@ -9,7 +9,7 @@ import CandidateSignup from "./pages/CandidateSignup";
 import Jobs from "./pages/Jobs";
 import OwnerDashboard from "./pages/OwnerDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
-import ManagerDashboard from "./pages/ManagerDashboard";
+
 import HRDashboard from "./pages/HRDashboard";
 import CandidateDashboard from "./pages/CandidateDashboard";
 import AptitudeTest from "./pages/AptitudeTest";
