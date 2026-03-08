@@ -424,6 +424,58 @@ const HRCandidatesView = ({ companyId }: Props) => {
     return next;
   };
 
+  // Candidates eligible for cutoff auto-approve (test_completed with scores)
+  const testCompletedApps = applications.filter(
+    (a) => a.current_stage === "test_completed" && a.test_score !== null
+  );
+  const qualifyingApps = testCompletedApps.filter((a) => (a.test_score ?? 0) >= cutoffScore);
+
+  const handleBulkApprove = async () => {
+    if (qualifyingApps.length === 0) return;
+    setBulkApproving(true);
+
+    try {
+      // Bulk update all qualifying candidates to video_intro
+      for (const app of qualifyingApps) {
+        await supabase
+          .from("applications")
+          .update({ current_stage: "video_intro" })
+          .eq("id", app.id);
+
+        // Send notification to each candidate
+        const { data: candidateUser } = await supabase
+          .from("users")
+          .select("id")
+          .eq("id", app.candidate_id)
+          .maybeSingle();
+
+        if (candidateUser) {
+          await supabase.from("notifications").insert({
+            user_id: candidateUser.id,
+            title: "🎉 Aptitude Test Cleared!",
+            message: `Congratulations! You scored ${app.test_score}% and cleared the aptitude test. Next step: Video Introduction. Login to record your video.`,
+          });
+        }
+      }
+
+      await notifyHROfManagerAction(
+        "📊 Bulk Cutoff Approval",
+        `${currentUserName} auto-approved ${qualifyingApps.length} candidates with aptitude score ≥ ${cutoffScore}% for Video Introduction.`
+      );
+
+      toast({
+        title: `✅ ${qualifyingApps.length} candidates approved!`,
+        description: `All candidates scoring ≥ ${cutoffScore}% moved to Video Introduction.`,
+      });
+
+      setCutoffDialogOpen(false);
+      fetchApplications();
+    } catch (e: any) {
+      toast({ title: "Error", description: e.message, variant: "destructive" });
+    }
+    setBulkApproving(false);
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
