@@ -16,6 +16,7 @@ interface Application {
   current_stage: string;
   resume_score: number | null;
   resume_url: string | null;
+  photo_url: string | null;
   ai_analysis: any;
   experience_years: number;
   current_company: string;
