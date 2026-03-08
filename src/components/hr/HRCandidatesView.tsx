@@ -261,6 +261,46 @@ const HRCandidatesView = ({ companyId }: Props) => {
     }
   };
 
+  const handleOpenVideoIntro = async (app: any) => {
+    // Move candidate to video_intro stage and notify
+    const { error } = await supabase
+      .from("applications")
+      .update({ current_stage: "video_intro" })
+      .eq("id", app.id);
+
+    if (error) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+      return;
+    }
+
+    // Get candidate user record for notification
+    const { data: candidateUser } = await supabase
+      .from("users")
+      .select("id")
+      .eq("id", app.candidate_id)
+      .maybeSingle();
+
+    if (candidateUser) {
+      await supabase.from("notifications").insert({
+        user_id: candidateUser.id,
+        title: "Aptitude Test Cleared!",
+        message: "Congratulations! You have cleared the aptitude test. Next step is Video Introduction. Record a 3 to 4 minute video about: Introduce yourself, Your experience and skills, Your best project, Why you want this role. Login to record your video at /video-intro. Complete within 48 hours.",
+      });
+    }
+
+    toast({ title: "✅ Video Round Opened", description: `Candidate has been notified to record their video introduction.` });
+    fetchApplications();
+  };
+
+  const handleViewVideo = async (app: any) => {
+    setVideoDialog(app);
+    setVideoSignedUrl(null);
+    if (app.video_url) {
+      const { data } = await supabase.storage.from("videos").createSignedUrl(app.video_url, 3600);
+      if (data?.signedUrl) setVideoSignedUrl(data.signedUrl);
+    }
+  };
+
   const getVerdict = (analysis: any): string => {
     if (!analysis) return "—";
     if (typeof analysis === "object" && analysis.verdict) return analysis.verdict;
@@ -270,10 +310,11 @@ const HRCandidatesView = ({ companyId }: Props) => {
   const getNextStage = (current: string): string | null => {
     const idx = stageFlow.indexOf(current);
     if (idx === -1 || idx >= stageFlow.length - 2) return null;
-    // Skip aptitude_test stage in the flow button - use the dedicated button
     const next = stageFlow[idx + 1];
     if (next === "aptitude_test") return null;
     if (next === "test_completed") return null;
+    if (next === "video_intro") return null;
+    if (next === "video_submitted") return null;
     return next;
   };
 
