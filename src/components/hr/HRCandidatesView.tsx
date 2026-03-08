@@ -1004,7 +1004,7 @@ const HRCandidatesView = ({ companyId }: Props) => {
 
       {/* Video Viewer Dialog */}
       <Dialog open={!!videoDialog} onOpenChange={() => setVideoDialog(null)}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Video Introduction — {videoDialog?.candidate_name}</DialogTitle>
           </DialogHeader>
@@ -1034,15 +1034,126 @@ const HRCandidatesView = ({ companyId }: Props) => {
                 </a>
               )}
 
+              {/* AI Video Analysis */}
+              {analyzingVideo && (
+                <div className="rounded-xl border border-border bg-card p-6 text-center">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-3" />
+                  <p className="text-sm font-semibold text-foreground">🤖 AI is analyzing the video...</p>
+                  <p className="text-xs text-muted-foreground mt-1">Evaluating expression, energy, eye contact, fluency, vocabulary and more</p>
+                </div>
+              )}
+
+              {videoDialog.video_analysis && !analyzingVideo && (() => {
+                const va = videoDialog.video_analysis;
+                const metrics = [
+                  { key: "energy_level", label: "⚡ Energy Level", icon: "⚡" },
+                  { key: "eye_contact", label: "👁️ Eye Contact", icon: "👁️" },
+                  { key: "english_fluency", label: "🗣️ English Fluency", icon: "🗣️" },
+                  { key: "vocabulary", label: "📚 Vocabulary", icon: "📚" },
+                  { key: "communication_skills", label: "💬 Communication", icon: "💬" },
+                  { key: "confidence", label: "💪 Confidence", icon: "💪" },
+                  { key: "body_language", label: "🧍 Body Language", icon: "🧍" },
+                  { key: "content_quality", label: "📝 Content Quality", icon: "📝" },
+                  { key: "professionalism", label: "👔 Professionalism", icon: "👔" },
+                  { key: "overall_impression", label: "⭐ Overall Impression", icon: "⭐" },
+                ];
+
+                const verdictColors: Record<string, string> = {
+                  strong: "bg-primary/10 text-primary border-primary/30",
+                  average: "bg-amber-500/10 text-amber-500 border-amber-500/30",
+                  weak: "bg-destructive/10 text-destructive border-destructive/30",
+                };
+
+                return (
+                  <div className="space-y-4">
+                    {/* Overall Score Header */}
+                    <div className="rounded-xl border border-border bg-card p-4 flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-muted-foreground">AI Video Score</p>
+                        <p className="text-3xl font-bold text-foreground">{va.overall_score}<span className="text-lg text-muted-foreground">/100</span></p>
+                      </div>
+                      <span className={`px-3 py-1 rounded-full text-sm font-semibold border ${verdictColors[va.verdict] || verdictColors.average}`}>
+                        {va.verdict?.toUpperCase()}
+                      </span>
+                    </div>
+
+                    {/* Summary */}
+                    {va.summary && (
+                      <div className="rounded-xl border border-border bg-card p-4">
+                        <p className="text-sm font-semibold text-foreground mb-1">📋 AI Summary</p>
+                        <p className="text-sm text-muted-foreground">{va.summary}</p>
+                      </div>
+                    )}
+
+                    {/* Metrics Grid */}
+                    <div className="grid grid-cols-2 gap-3">
+                      {metrics.map(({ key, label }) => {
+                        const m = va[key];
+                        if (!m) return null;
+                        const score = m.score ?? 0;
+                        const barColor = score >= 7 ? "bg-primary" : score >= 5 ? "bg-amber-500" : "bg-destructive";
+                        return (
+                          <div key={key} className="rounded-lg border border-border bg-card/60 p-3">
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="text-xs font-medium text-foreground">{label}</span>
+                              <span className="text-sm font-bold text-foreground">{score}/10</span>
+                            </div>
+                            <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden mb-1.5">
+                              <div className={`h-full rounded-full ${barColor}`} style={{ width: `${score * 10}%` }} />
+                            </div>
+                            <p className="text-xs text-muted-foreground">{m.feedback}</p>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Strengths & Improvements */}
+                    <div className="grid grid-cols-2 gap-3">
+                      {va.strengths?.length > 0 && (
+                        <div className="rounded-lg border border-border bg-card/60 p-3">
+                          <p className="text-xs font-semibold text-primary mb-2">✅ Strengths</p>
+                          <ul className="space-y-1">
+                            {va.strengths.map((s: string, i: number) => (
+                              <li key={i} className="text-xs text-muted-foreground">• {s}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                      {va.improvements?.length > 0 && (
+                        <div className="rounded-lg border border-border bg-card/60 p-3">
+                          <p className="text-xs font-semibold text-amber-500 mb-2">🔧 Areas to Improve</p>
+                          <ul className="space-y-1">
+                            {va.improvements.map((s: string, i: number) => (
+                              <li key={i} className="text-xs text-muted-foreground">• {s}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Retry button */}
+                    <Button variant="outline" size="sm" onClick={handleRetryVideoAnalysis} disabled={analyzingVideo}>
+                      🔄 Re-analyze Video
+                    </Button>
+                  </div>
+                );
+              })()}
+
+              {!videoDialog.video_analysis && !analyzingVideo && (
+                <Button variant="outline" onClick={handleRetryVideoAnalysis} disabled={analyzingVideo}>
+                  🤖 Analyze with AI
+                </Button>
+              )}
+
               <div className="flex gap-2 pt-2">
                 <Button
                   onClick={() => {
-                    handleUpdateStage(videoDialog.id, "interview");
+                    handleUpdateStage(videoDialog.id, "technical_round");
                     setVideoDialog(null);
                   }}
                   className="bg-primary text-primary-foreground"
                 >
-                  ✅ Move to Interview
+                  ✅ Move to Technical Round
                 </Button>
                 <Button
                   variant="outline"
