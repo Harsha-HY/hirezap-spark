@@ -648,16 +648,23 @@ const AptitudeTest = () => {
 
       {/* Webcam preview */}
       <div className="fixed bottom-4 right-4 z-50">
-        <div className="w-40 h-30 rounded-xl overflow-hidden border-2 border-primary/30 shadow-xl bg-black">
+        <div className={`w-44 rounded-xl overflow-hidden shadow-xl transition-all duration-300 ${
+          cameraAlert
+            ? "border-4 border-destructive shadow-destructive/30 animate-pulse"
+            : "border-2 border-primary/30"
+        }`}>
           <video
             ref={videoRef}
             autoPlay
             muted
             playsInline
-            className="w-full h-full object-cover"
+            className="w-full h-auto object-cover rounded-lg"
+            style={{ minHeight: "120px" }}
           />
         </div>
-        <p className="text-[10px] text-muted-foreground text-center mt-1">📹 Camera ON</p>
+        <p className={`text-[10px] text-center mt-1 font-medium ${cameraAlert ? "text-destructive" : "text-muted-foreground"}`}>
+          {cameraAlert ? "⚠️ Motion/Sound Detected!" : "📹 Camera ON"}
+        </p>
       </div>
     </div>
   );
