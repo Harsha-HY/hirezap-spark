@@ -12,6 +12,7 @@ import AdminDashboard from "./pages/AdminDashboard";
 import HRDashboard from "./pages/HRDashboard";
 import CandidateDashboard from "./pages/CandidateDashboard";
 import AptitudeTest from "./pages/AptitudeTest";
+import ReviewAssessment from "./pages/ReviewAssessment";
 import NotFound from "./pages/NotFound";
 import ProtectedRoute from "./components/ProtectedRoute";
 
@@ -50,6 +51,14 @@ const App = () => (
             element={
               <ProtectedRoute requiredRole="hr">
                 <HRDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/review-assessment/:assessmentId"
+            element={
+              <ProtectedRoute requiredRole="hr">
+                <ReviewAssessment />
               </ProtectedRoute>
             }
           />
