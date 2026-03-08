@@ -226,10 +226,37 @@ const HRDashboard = () => {
         <header className="sticky top-0 z-20 flex items-center justify-between border-b border-border bg-background/80 backdrop-blur-md px-8 py-4">
           <h1 className="text-xl font-bold text-foreground">HR Dashboard</h1>
           <div className="flex items-center gap-4">
-            <button className="relative p-2 rounded-lg hover:bg-secondary transition-colors">
-              <Bell className="h-5 w-5 text-muted-foreground" />
-              <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-destructive" />
-            </button>
+            <div className="relative">
+              <button
+                onClick={() => setShowNotifPopup(!showNotifPopup)}
+                className="relative p-2 rounded-lg hover:bg-secondary transition-colors"
+              >
+                <Bell className="h-5 w-5 text-muted-foreground" />
+                {notifications.filter(n => !n.read).length > 0 && (
+                  <span className="absolute top-1 right-1 h-4 w-4 rounded-full bg-destructive flex items-center justify-center text-[10px] text-destructive-foreground font-bold">
+                    {notifications.filter(n => !n.read).length}
+                  </span>
+                )}
+              </button>
+              {showNotifPopup && (
+                <div className="absolute right-0 top-12 w-80 max-h-96 overflow-y-auto rounded-xl border border-border bg-card shadow-xl z-50">
+                  <div className="p-3 border-b border-border">
+                    <p className="text-sm font-semibold text-foreground">Notifications</p>
+                  </div>
+                  {notifications.length === 0 ? (
+                    <p className="p-4 text-sm text-muted-foreground">No notifications yet.</p>
+                  ) : (
+                    notifications.map((n) => (
+                      <div key={n.id} className={`p-3 border-b border-border last:border-0 ${!n.read ? "bg-primary/5" : ""}`}>
+                        <p className="text-sm font-medium text-foreground">{n.title}</p>
+                        <p className="text-xs text-muted-foreground mt-1 line-clamp-3">{n.message}</p>
+                        <p className="text-[10px] text-muted-foreground mt-1">{new Date(n.created_at).toLocaleString()}</p>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
             <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center text-primary text-sm font-bold">
               {hrName?.charAt(0)?.toUpperCase() || "H"}
             </div>
