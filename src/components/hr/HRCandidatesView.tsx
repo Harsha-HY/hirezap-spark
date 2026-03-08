@@ -333,6 +333,10 @@ const HRCandidatesView = ({ companyId }: Props) => {
       });
     }
 
+    await notifyHROfManagerAction(
+      "🎥 Video Round Opened",
+      `${currentUserName} opened video introduction for ${app.candidate_name || "a candidate"}.`
+    );
     toast({ title: "✅ Video Round Opened", description: `Candidate has been notified to record their video introduction.` });
     fetchApplications();
   };
