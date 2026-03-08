@@ -195,7 +195,7 @@ const Login = () => {
         >
           First time here?{" "}
           <Link
-            to="/signup"
+            to="/candidate-signup"
             className="text-primary font-medium hover:underline underline-offset-4"
           >
             Create Account
