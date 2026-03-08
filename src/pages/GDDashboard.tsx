@@ -344,12 +344,21 @@ const GDDashboard = () => {
                             </div>
                           )}
                         </div>
-                        <Badge className="bg-amber-500/10 text-amber-500 border-0">Scheduled</Badge>
-                      </div>
-                    </CardContent>
-                  </Card>
-                );
-              })}
+                        <div className="flex flex-col items-end gap-2">
+                          <Badge className="bg-amber-500/10 text-amber-500 border-0">Scheduled</Badge>
+                          <Button
+                            size="sm"
+                            onClick={() => handleAnalyzeGD(gd)}
+                            disabled={analyzingGD === gd.id}
+                            className="gap-1.5 text-xs"
+                          >
+                            {analyzingGD === gd.id ? (
+                              <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Analyzing...</>
+                            ) : (
+                              <><Brain className="h-3.5 w-3.5" /> Complete & Analyze</>
+                            )}
+                          </Button>
+                        </div>
             </div>
           )}
         </motion.div>
