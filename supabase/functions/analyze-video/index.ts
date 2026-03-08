@@ -22,12 +22,10 @@ Deno.serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const lovableApiKey = Deno.env.get("LOVABLE_API_KEY");
-
     if (!lovableApiKey) throw new Error("LOVABLE_API_KEY is not configured");
 
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
-    // Fetch application
     const { data: application, error: appErr } = await supabase
       .from("applications")
       .select("*")
@@ -35,38 +33,30 @@ Deno.serve(async (req) => {
       .maybeSingle();
 
     if (appErr || !application) throw new Error("Application not found");
-    if (!application.video_url) throw new Error("No video uploaded for this application");
+    if (!application.video_url) throw new Error("No video uploaded");
 
-    // Fetch job info
     const { data: job } = await supabase
       .from("jobs")
       .select("title, department, skills_required")
       .eq("id", application.job_id)
       .maybeSingle();
 
-    // Fetch candidate info
     const { data: candidate } = await supabase
       .from("users")
       .select("full_name")
       .eq("id", application.candidate_id)
       .maybeSingle();
 
-    // Download video from storage
-    const { data: videoData, error: videoErr } = await supabase.storage
+    // Create a signed URL for the video (valid 1 hour) — no download needed
+    const { data: signedData, error: signErr } = await supabase.storage
       .from("videos")
-      .download(application.video_url);
+      .createSignedUrl(application.video_url, 3600);
 
-    if (videoErr || !videoData) throw new Error("Could not download video: " + (videoErr?.message || ""));
-
-    // Convert to base64
-    const videoBytes = new Uint8Array(await videoData.arrayBuffer());
-    let binary = "";
-    const chunkSize = 32768;
-    for (let i = 0; i < videoBytes.length; i += chunkSize) {
-      const chunk = videoBytes.subarray(i, i + chunkSize);
-      binary += String.fromCharCode(...chunk);
+    if (signErr || !signedData?.signedUrl) {
+      throw new Error("Could not create signed URL for video: " + (signErr?.message || ""));
     }
-    const videoBase64 = btoa(binary);
+
+    const videoUrl = signedData.signedUrl;
 
     const prompt = `You are an expert HR recruitment analyst reviewing a candidate's video introduction.
 
@@ -76,37 +66,37 @@ Required Skills: ${(job?.skills_required || []).join(", ") || "Not specified"}
 
 Analyze this video introduction thoroughly and evaluate the candidate on these parameters:
 
-1. **Energy Level** - How enthusiastic, motivated, and energetic is the candidate?
-2. **Eye Contact** - Does the candidate maintain good eye contact with the camera?
-3. **English Fluency** - How fluent is their English? Grammar, pronunciation, flow.
-4. **Vocabulary** - Quality and richness of vocabulary used.
-5. **Communication Skills** - Clarity of expression, structure of thoughts, articulation.
-6. **Confidence** - How confident does the candidate appear?
-7. **Body Language** - Posture, gestures, facial expressions.
-8. **Content Quality** - Relevance and depth of what they talked about.
-9. **Professionalism** - Overall professional demeanor and presentation.
-10. **Overall Impression** - General suitability for the role.
+1. Energy Level - How enthusiastic, motivated, and energetic is the candidate?
+2. Eye Contact - Does the candidate maintain good eye contact with the camera?
+3. English Fluency - How fluent is their English? Grammar, pronunciation, flow.
+4. Vocabulary - Quality and richness of vocabulary used.
+5. Communication Skills - Clarity of expression, structure of thoughts, articulation.
+6. Confidence - How confident does the candidate appear?
+7. Body Language - Posture, gestures, facial expressions.
+8. Content Quality - Relevance and depth of what they talked about.
+9. Professionalism - Overall professional demeanor and presentation.
+10. Overall Impression - General suitability for the role.
 
-Return ONLY a valid JSON response with these exact fields:
+Return ONLY valid JSON with these exact fields:
 {
-  "overall_score": number between 0 and 100,
-  "energy_level": { "score": number 0-10, "feedback": "1-2 sentence feedback" },
-  "eye_contact": { "score": number 0-10, "feedback": "1-2 sentence feedback" },
-  "english_fluency": { "score": number 0-10, "feedback": "1-2 sentence feedback" },
-  "vocabulary": { "score": number 0-10, "feedback": "1-2 sentence feedback" },
-  "communication_skills": { "score": number 0-10, "feedback": "1-2 sentence feedback" },
-  "confidence": { "score": number 0-10, "feedback": "1-2 sentence feedback" },
-  "body_language": { "score": number 0-10, "feedback": "1-2 sentence feedback" },
-  "content_quality": { "score": number 0-10, "feedback": "1-2 sentence feedback" },
-  "professionalism": { "score": number 0-10, "feedback": "1-2 sentence feedback" },
-  "overall_impression": { "score": number 0-10, "feedback": "1-2 sentence feedback" },
+  "overall_score": number 0-100,
+  "energy_level": { "score": number 0-10, "feedback": "1-2 sentences" },
+  "eye_contact": { "score": number 0-10, "feedback": "1-2 sentences" },
+  "english_fluency": { "score": number 0-10, "feedback": "1-2 sentences" },
+  "vocabulary": { "score": number 0-10, "feedback": "1-2 sentences" },
+  "communication_skills": { "score": number 0-10, "feedback": "1-2 sentences" },
+  "confidence": { "score": number 0-10, "feedback": "1-2 sentences" },
+  "body_language": { "score": number 0-10, "feedback": "1-2 sentences" },
+  "content_quality": { "score": number 0-10, "feedback": "1-2 sentences" },
+  "professionalism": { "score": number 0-10, "feedback": "1-2 sentences" },
+  "overall_impression": { "score": number 0-10, "feedback": "1-2 sentences" },
   "verdict": "strong" or "average" or "weak",
-  "summary": "3-4 sentence overall summary for the hiring manager",
-  "strengths": ["strength1", "strength2", ...],
-  "improvements": ["area1", "area2", ...]
+  "summary": "3-4 sentence summary for hiring manager",
+  "strengths": ["strength1", "strength2"],
+  "improvements": ["area1", "area2"]
 }`;
 
-    // Call Lovable AI with video (Gemini supports multimodal)
+    // Send video URL to Gemini — it will fetch the video itself
     const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -125,9 +115,7 @@ Return ONLY a valid JSON response with these exact fields:
             content: [
               {
                 type: "image_url",
-                image_url: {
-                  url: `data:video/webm;base64,${videoBase64}`,
-                },
+                image_url: { url: videoUrl },
               },
               {
                 type: "text",
@@ -145,17 +133,15 @@ Return ONLY a valid JSON response with these exact fields:
       console.error("AI gateway error:", aiResponse.status, errText);
       if (aiResponse.status === 429) {
         return new Response(JSON.stringify({ error: "Rate limited, please try again later" }), {
-          status: 429,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
       if (aiResponse.status === 402) {
         return new Response(JSON.stringify({ error: "Payment required for AI" }), {
-          status: 402,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      throw new Error(`AI error: ${aiResponse.status}`);
+      throw new Error(`AI error: ${aiResponse.status} - ${errText}`);
     }
 
     const aiData = await aiResponse.json();
@@ -166,7 +152,7 @@ Return ONLY a valid JSON response with these exact fields:
       const cleaned = aiContent.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
       analysis = JSON.parse(cleaned);
     } catch {
-      console.error("Failed to parse AI video analysis:", aiContent);
+      console.error("Failed to parse AI video response:", aiContent);
       analysis = {
         overall_score: 50,
         energy_level: { score: 5, feedback: "Could not fully analyze." },
@@ -186,13 +172,9 @@ Return ONLY a valid JSON response with these exact fields:
       };
     }
 
-    // Save analysis to application
     const { error: updateErr } = await supabase
       .from("applications")
-      .update({
-        video_score: analysis.overall_score,
-        video_analysis: analysis,
-      })
+      .update({ video_score: analysis.overall_score, video_analysis: analysis })
       .eq("id", applicationId);
 
     if (updateErr) throw new Error("Failed to save video analysis: " + updateErr.message);
