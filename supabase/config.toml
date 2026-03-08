@@ -1,1 +1,7 @@
 project_id = "aqifremdpprnaayptdqi"
+
+[functions.create-user]
+verify_jwt = false
+
+[functions.score-resume]
+verify_jwt = false

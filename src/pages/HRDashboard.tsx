@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -7,8 +7,9 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import AddJobPanel from "@/components/AddJobPanel";
+import { useToast } from "@/hooks/use-toast";
 
 interface JobRow {
   id: string;
@@ -44,6 +45,11 @@ const HRDashboard = () => {
   const [jobs, setJobs] = useState<JobRow[]>([]);
   const [managers, setManagers] = useState<{ id: string; full_name: string }[]>([]);
   const [panelOpen, setPanelOpen] = useState(false);
+  const [notifications, setNotifications] = useState<{ id: string; title: string; message: string; created_at: string; read: boolean }[]>([]);
+  const [showNotifPopup, setShowNotifPopup] = useState(false);
+  const [latestNotif, setLatestNotif] = useState<{ title: string; message: string } | null>(null);
+  const [liveActivities, setLiveActivities] = useState<{ message: string; time: string }[]>([]);
+  const { toast } = useToast();
 
   const fetchData = async () => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -87,6 +93,66 @@ const HRDashboard = () => {
   };
 
   useEffect(() => { fetchData(); }, []);
+
+  // Fetch notifications
+  const fetchNotifications = useCallback(async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return;
+
+    const { data: userData } = await supabase
+      .from("users")
+      .select("id")
+      .eq("user_id", session.user.id)
+      .maybeSingle();
+
+    if (!userData) return;
+
+    const { data } = await supabase
+      .from("notifications")
+      .select("*")
+      .eq("user_id", userData.id)
+      .order("created_at", { ascending: false })
+      .limit(20);
+
+    if (data) setNotifications(data as any);
+  }, []);
+
+  useEffect(() => { fetchNotifications(); }, [fetchNotifications]);
+
+  // Subscribe to realtime notifications
+  useEffect(() => {
+    const channel = supabase
+      .channel("hr-notifications")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "notifications" },
+        (payload) => {
+          const newNotif = payload.new as any;
+          setNotifications((prev) => [newNotif, ...prev]);
+
+          // Show popup
+          setLatestNotif({ title: newNotif.title, message: newNotif.message });
+          setTimeout(() => setLatestNotif(null), 8000);
+
+          // Add to live activity
+          setLiveActivities((prev) => [
+            { message: newNotif.message, time: "Just now" },
+            ...prev.slice(0, 9),
+          ]);
+
+          // Refresh jobs to update application counts
+          fetchData();
+
+          toast({
+            title: `🔔 ${newNotif.title}`,
+            description: newNotif.message.substring(0, 100) + "...",
+          });
+        }
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, []);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -160,10 +226,37 @@ const HRDashboard = () => {
         <header className="sticky top-0 z-20 flex items-center justify-between border-b border-border bg-background/80 backdrop-blur-md px-8 py-4">
           <h1 className="text-xl font-bold text-foreground">HR Dashboard</h1>
           <div className="flex items-center gap-4">
-            <button className="relative p-2 rounded-lg hover:bg-secondary transition-colors">
-              <Bell className="h-5 w-5 text-muted-foreground" />
-              <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-destructive" />
-            </button>
+            <div className="relative">
+              <button
+                onClick={() => setShowNotifPopup(!showNotifPopup)}
+                className="relative p-2 rounded-lg hover:bg-secondary transition-colors"
+              >
+                <Bell className="h-5 w-5 text-muted-foreground" />
+                {notifications.filter(n => !n.read).length > 0 && (
+                  <span className="absolute top-1 right-1 h-4 w-4 rounded-full bg-destructive flex items-center justify-center text-[10px] text-destructive-foreground font-bold">
+                    {notifications.filter(n => !n.read).length}
+                  </span>
+                )}
+              </button>
+              {showNotifPopup && (
+                <div className="absolute right-0 top-12 w-80 max-h-96 overflow-y-auto rounded-xl border border-border bg-card shadow-xl z-50">
+                  <div className="p-3 border-b border-border">
+                    <p className="text-sm font-semibold text-foreground">Notifications</p>
+                  </div>
+                  {notifications.length === 0 ? (
+                    <p className="p-4 text-sm text-muted-foreground">No notifications yet.</p>
+                  ) : (
+                    notifications.map((n) => (
+                      <div key={n.id} className={`p-3 border-b border-border last:border-0 ${!n.read ? "bg-primary/5" : ""}`}>
+                        <p className="text-sm font-medium text-foreground">{n.title}</p>
+                        <p className="text-xs text-muted-foreground mt-1 line-clamp-3">{n.message}</p>
+                        <p className="text-[10px] text-muted-foreground mt-1">{new Date(n.created_at).toLocaleString()}</p>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
             <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center text-primary text-sm font-bold">
               {hrName?.charAt(0)?.toUpperCase() || "H"}
             </div>
@@ -207,7 +300,28 @@ const HRDashboard = () => {
                 <span className="text-xs font-semibold text-destructive uppercase tracking-wider">Live</span>
               </div>
             </div>
-            <p className="text-muted-foreground text-sm">No activity yet. Post a job to get started.</p>
+            {liveActivities.length === 0 ? (
+              <p className="text-muted-foreground text-sm">No activity yet. Post a job to get started.</p>
+            ) : (
+              <div className="space-y-3">
+                <AnimatePresence>
+                  {liveActivities.map((activity, i) => (
+                    <motion.div
+                      key={i}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      className="flex items-start gap-3 text-sm"
+                    >
+                      <span className="text-primary">📄</span>
+                      <div>
+                        <p className="text-foreground">{activity.message}</p>
+                        <p className="text-xs text-muted-foreground">{activity.time}</p>
+                      </div>
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
+              </div>
+            )}
           </motion.div>
 
           {/* Jobs Section */}
@@ -292,6 +406,27 @@ const HRDashboard = () => {
         managers={managers}
         onJobCreated={fetchData}
       />
+
+      {/* Floating notification popup */}
+      <AnimatePresence>
+        {latestNotif && (
+          <motion.div
+            initial={{ opacity: 0, y: 50, x: 20 }}
+            animate={{ opacity: 1, y: 0, x: 0 }}
+            exit={{ opacity: 0, y: 50 }}
+            className="fixed bottom-6 right-6 z-50 w-80 rounded-xl border border-primary/30 bg-card shadow-2xl shadow-primary/10 p-4"
+          >
+            <div className="flex items-start gap-3">
+              <span className="text-xl">🔔</span>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-foreground">{latestNotif.title}</p>
+                <p className="text-xs text-muted-foreground mt-1 line-clamp-3">{latestNotif.message}</p>
+              </div>
+              <button onClick={() => setLatestNotif(null)} className="text-muted-foreground hover:text-foreground text-xs">✕</button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

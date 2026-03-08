@@ -16,6 +16,7 @@ export type Database = {
     Tables: {
       applications: {
         Row: {
+          ai_analysis: Json | null
           applied_at: string
           candidate_id: string
           cover_letter: string | null
@@ -28,11 +29,13 @@ export type Database = {
           job_id: string
           notice_period: number
           photo_url: string | null
+          resume_score: number | null
           resume_url: string | null
           status: string
           updated_at: string
         }
         Insert: {
+          ai_analysis?: Json | null
           applied_at?: string
           candidate_id: string
           cover_letter?: string | null
@@ -45,11 +48,13 @@ export type Database = {
           job_id: string
           notice_period: number
           photo_url?: string | null
+          resume_score?: number | null
           resume_url?: string | null
           status?: string
           updated_at?: string
         }
         Update: {
+          ai_analysis?: Json | null
           applied_at?: string
           candidate_id?: string
           cover_letter?: string | null
@@ -62,6 +67,7 @@ export type Database = {
           job_id?: string
           notice_period?: number
           photo_url?: string | null
+          resume_score?: number | null
           resume_url?: string | null
           status?: string
           updated_at?: string
