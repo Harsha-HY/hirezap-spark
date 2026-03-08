@@ -680,19 +680,45 @@ const HRCandidatesView = ({ companyId }: Props) => {
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
       <div className="rounded-xl border border-border bg-card">
-        <div className="px-6 py-4 border-b border-border flex items-center justify-between gap-4">
+        <div className="px-6 py-4 border-b border-border flex items-center justify-between gap-4 flex-wrap">
           <h2 className="text-lg font-semibold text-foreground">All Candidates ({applications.length})</h2>
-          {testCompletedApps.length > 0 && currentUserRole === "manager" && (
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => setCutoffDialogOpen(true)}
-              className="gap-2 text-xs"
-            >
-              <Filter className="h-3.5 w-3.5" />
-              Auto-Approve by Cutoff ({testCompletedApps.length} pending)
-            </Button>
-          )}
+          <div className="flex items-center gap-2 flex-wrap">
+            {aptitudeEligibleApps.length > 0 && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleBulkGenerateAptitude}
+                disabled={bulkGeneratingAptitude}
+                className="gap-2 text-xs"
+              >
+                {bulkGeneratingAptitude ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <BookOpen className="h-3.5 w-3.5" />}
+                {bulkGeneratingAptitude ? "Generating..." : `Generate Aptitude for All (${aptitudeEligibleApps.length})`}
+              </Button>
+            )}
+            {technicalEligibleApps.length > 0 && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleBulkGenerateTechnical}
+                disabled={bulkGeneratingTechnical}
+                className="gap-2 text-xs"
+              >
+                {bulkGeneratingTechnical ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Code2 className="h-3.5 w-3.5" />}
+                {bulkGeneratingTechnical ? "Generating..." : `Generate Technical for All (${technicalEligibleApps.length})`}
+              </Button>
+            )}
+            {testCompletedApps.length > 0 && currentUserRole === "manager" && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setCutoffDialogOpen(true)}
+                className="gap-2 text-xs"
+              >
+                <Filter className="h-3.5 w-3.5" />
+                Auto-Approve by Cutoff ({testCompletedApps.length} pending)
+              </Button>
+            )}
+          </div>
         </div>
 
         {applications.length === 0 ? (
