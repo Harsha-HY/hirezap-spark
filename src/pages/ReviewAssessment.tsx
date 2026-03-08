@@ -283,6 +283,7 @@ const ReviewAssessment = () => {
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
+  const handleApprove = async () => {
     setApproving(true);
     try {
       // Update assessment status
