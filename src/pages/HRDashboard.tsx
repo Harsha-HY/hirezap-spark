@@ -179,7 +179,7 @@ const HRDashboard = () => {
   const renderContent = () => {
     switch (activeNav) {
       case "Jobs":
-        return <HRJobsView jobs={jobs} managers={managers} onPostJob={() => setPanelOpen(true)} />;
+        return <HRJobsView jobs={jobs} managers={managers} onPostJob={() => setPanelOpen(true)} onJobUpdated={fetchData} />;
       case "Candidates":
         return <HRCandidatesView companyId={companyId} />;
       case "Interviews":
@@ -279,7 +279,7 @@ const HRDashboard = () => {
             </motion.div>
 
             {/* Recent Jobs Summary */}
-            <HRJobsView jobs={jobs.slice(0, 5)} managers={managers} onPostJob={() => setPanelOpen(true)} />
+            <HRJobsView jobs={jobs.slice(0, 5)} managers={managers} onPostJob={() => setPanelOpen(true)} onJobUpdated={fetchData} />
           </>
         );
     }
