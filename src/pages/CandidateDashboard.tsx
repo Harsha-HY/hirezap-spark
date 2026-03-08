@@ -214,7 +214,13 @@ const CandidateDashboard = () => {
                 <div className="space-y-4">
                   {stages.map((stage, idx) => {
                     const rawStage = applications[0].current_stage;
-                    const normalizedStage = rawStage === "applied" || rawStage === "ai_scored" ? "resume_review" : rawStage;
+                    const normalizedStage = 
+                      rawStage === "applied" || rawStage === "ai_scored" ? "resume_review" 
+                      : rawStage === "test_completed" ? "video_intro"
+                      : rawStage === "shortlisted" ? "aptitude_test"
+                      : rawStage === "interview" ? "hr_interview"
+                      : rawStage === "selected" ? "offer_letter"
+                      : rawStage;
                     const currentIdx = getStageIndex(normalizedStage);
                     const isCompleted = idx < currentIdx;
                     const isCurrent = idx === currentIdx;
