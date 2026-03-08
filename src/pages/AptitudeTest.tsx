@@ -495,6 +495,13 @@ const AptitudeTest = () => {
     return `${m.toString().padStart(2, "0")}:${sec.toString().padStart(2, "0")}`;
   };
 
+  useEffect(() => {
+    return () => {
+      streamRef.current?.getTracks().forEach((t) => t.stop());
+      void audioContextRef.current?.close();
+    };
+  }, []);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-background">
