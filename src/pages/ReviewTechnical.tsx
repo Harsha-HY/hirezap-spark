@@ -448,20 +448,14 @@ const ReviewTechnical = () => {
         {/* Approval Status */}
         <div className="rounded-xl border border-border bg-card p-5">
           <h3 className="text-sm font-semibold text-foreground mb-3">Approval Status</h3>
-          <div className="flex items-center gap-6 mb-3">
-            <div className="flex items-center gap-2">
-              {hrApproved ? <CheckCircle2 className="h-5 w-5 text-primary" /> : <Clock className="h-5 w-5 text-amber-500" />}
-              <span className="text-sm">HR Approval: <strong>{hrApproved ? "✅ Approved" : "⏳ Pending"}</strong></span>
-            </div>
-            <div className="flex items-center gap-2">
-              {managerApproved ? <CheckCircle2 className="h-5 w-5 text-primary" /> : <Clock className="h-5 w-5 text-amber-500" />}
-              <span className="text-sm">Manager Approval: <strong>{managerApproved ? "✅ Approved" : "⏳ Pending"}</strong></span>
-            </div>
+          <div className="flex items-center gap-2 mb-3">
+            {isApproved ? <CheckCircle2 className="h-5 w-5 text-primary" /> : <Clock className="h-5 w-5 text-amber-500" />}
+            <span className="text-sm">Manager Approval: <strong>{managerApproved ? "✅ Approved" : "⏳ Pending"}</strong></span>
           </div>
           {isApproved && (
-            <p className="text-sm text-primary font-medium">✅ Both approved — Test sent to candidate!</p>
+            <p className="text-sm text-primary font-medium">✅ Approved — Test sent to candidate!</p>
           )}
-          {!isApproved && !alreadyApproved && (
+          {!isApproved && userRole === "manager" && (
             <div className="mt-3 flex gap-2">
               <Button onClick={handleApprove} disabled={approving} className="bg-primary text-primary-foreground">
                 {approving ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Check className="h-4 w-4 mr-1" />}
@@ -469,8 +463,8 @@ const ReviewTechnical = () => {
               </Button>
             </div>
           )}
-          {!isApproved && alreadyApproved && (
-            <p className="text-sm text-muted-foreground mt-2">You've already approved. Waiting for {userRole === "hr" ? "Manager" : "HR"} approval.</p>
+          {!isApproved && userRole === "hr" && (
+            <p className="text-sm text-muted-foreground mt-2 italic">Only the Hiring Manager can approve. You will be notified once approved.</p>
           )}
         </div>
 
