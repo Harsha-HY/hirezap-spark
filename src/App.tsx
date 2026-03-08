@@ -79,6 +79,14 @@ const App = () => (
               </ProtectedRoute>
             }
           />
+          <Route
+            path="/video-intro"
+            element={
+              <ProtectedRoute requiredRole="candidate">
+                <VideoIntro />
+              </ProtectedRoute>
+            }
+          />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
