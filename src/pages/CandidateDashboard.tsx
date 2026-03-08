@@ -54,6 +54,7 @@ const CandidateDashboard = () => {
   const [bgvDocs, setBgvDocs] = useState<any[]>([]);
   const [uploading, setUploading] = useState<string | null>(null);
   const [negotiationOpen, setNegotiationOpen] = useState(false);
+  const [gdInfo, setGdInfo] = useState<any>(null);
   const [declineOpen, setDeclineOpen] = useState(false);
   const [declineReason, setDeclineReason] = useState("");
   const { toast } = useToast();
