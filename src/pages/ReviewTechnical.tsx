@@ -356,23 +356,20 @@ const ReviewTechnical = () => {
           <h3 className="text-sm font-semibold text-foreground mb-3">Approval Status</h3>
           <div className="flex items-center gap-6">
             <div className="flex items-center gap-2">
-              {hrApproved ? (
+              {isApproved ? (
                 <CheckCircle2 className="h-5 w-5 text-primary" />
               ) : (
                 <Clock className="h-5 w-5 text-amber-500" />
               )}
-              <span className="text-sm">HR Approval: <strong>{hrApproved ? "✅ Approved" : "⏳ Pending"}</strong></span>
+              <span className="text-sm">
+                Manager Approval: <strong>{managerApproved ? "✅ Approved" : "⏳ Pending"}</strong>
+              </span>
             </div>
-            <div className="flex items-center gap-2">
-              {managerApproved ? (
-                <CheckCircle2 className="h-5 w-5 text-primary" />
-              ) : (
-                <Clock className="h-5 w-5 text-amber-500" />
-              )}
-              <span className="text-sm">Manager Approval: <strong>{managerApproved ? "✅ Approved" : "⏳ Pending"}</strong></span>
-            </div>
+            {userRole === "hr" && (
+              <span className="text-xs text-muted-foreground italic">Only the Hiring Manager can approve. You will be notified.</span>
+            )}
           </div>
-          {!currentUserApproved && (
+          {userRole === "manager" && !managerApproved && (
             <div className="mt-4 flex gap-2">
               <Button onClick={handleApprove} disabled={approving} className="bg-primary text-primary-foreground">
                 {approving ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Check className="h-4 w-4 mr-1" />}
