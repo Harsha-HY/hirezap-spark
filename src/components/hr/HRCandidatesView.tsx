@@ -590,6 +590,7 @@ const HRCandidatesView = ({ companyId }: Props) => {
                   <TableHead>AI Score</TableHead>
                   <TableHead>Verdict</TableHead>
                   <TableHead>Test Score</TableHead>
+                  <TableHead>Tech Score</TableHead>
                   <TableHead>Stage</TableHead>
                   <TableHead>Resume</TableHead>
                   <TableHead>Actions</TableHead>
