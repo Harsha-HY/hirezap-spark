@@ -284,6 +284,15 @@ const CandidateDashboard = () => {
                               🎯 Take Test
                             </Button>
                           )}
+                          {isCurrent && stage.key === "video_intro" && (
+                            <Button
+                              size="sm"
+                              onClick={() => navigate("/video-intro")}
+                              className="bg-primary text-primary-foreground h-7 px-3 text-xs"
+                            >
+                              🎥 Record Video
+                            </Button>
+                          )}
                         </div>
                       </div>
                     );
