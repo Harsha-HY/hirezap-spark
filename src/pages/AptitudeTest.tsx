@@ -40,6 +40,7 @@ const AptitudeTest = () => {
   const [violations, setViolations] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [cameraAlert, setCameraAlert] = useState(false);
+  const [cameraCautionText, setCameraCautionText] = useState("Monitoring environment");
 
   // Webcam
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -48,6 +49,7 @@ const AptitudeTest = () => {
   const prevFrameRef = useRef<ImageData | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
+  const violationCooldownRef = useRef<Record<string, number>>({});
 
   // Check authorization and load questions from assessments
   useEffect(() => {
