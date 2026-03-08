@@ -83,7 +83,20 @@ const HRDashboard = () => {
         .select("*")
         .eq("company_id", user.company_id)
         .order("created_at", { ascending: false });
-      if (jobsData) setJobs(jobsData as JobRow[]);
+      if (jobsData) {
+        setJobs(jobsData as JobRow[]);
+        const jobIds = jobsData.map((j: any) => j.id);
+        if (jobIds.length > 0) {
+          const { data: apps } = await supabase
+            .from("applications")
+            .select("id, current_stage")
+            .in("job_id", jobIds);
+          if (apps) {
+            setTotalApplications(apps.length);
+            setShortlistedCount(apps.filter((a: any) => ["shortlisted", "aptitude_test", "test_completed", "interview", "selected"].includes(a.current_stage)).length);
+          }
+        }
+      }
 
       const { data: mgrs } = await supabase
         .from("users")
