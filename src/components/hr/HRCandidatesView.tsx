@@ -31,7 +31,7 @@ interface Props {
   companyId: string;
 }
 
-const stageFlow = ["applied", "ai_scored", "shortlisted", "aptitude_test", "test_completed", "interview", "selected", "rejected"];
+const stageFlow = ["applied", "ai_scored", "shortlisted", "aptitude_test", "test_completed", "video_intro", "video_submitted", "interview", "selected", "rejected"];
 
 const stageLabel: Record<string, string> = {
   applied: "Applied",
@@ -39,6 +39,8 @@ const stageLabel: Record<string, string> = {
   shortlisted: "Shortlisted",
   aptitude_test: "Aptitude Test",
   test_completed: "Test Done",
+  video_intro: "Video Intro",
+  video_submitted: "Video Done",
   interview: "Interview",
   selected: "Selected",
   rejected: "Rejected",
@@ -50,6 +52,8 @@ const stageBadgeClass: Record<string, string> = {
   shortlisted: "bg-amber-500/10 text-amber-500",
   aptitude_test: "bg-purple-500/10 text-purple-500",
   test_completed: "bg-primary/10 text-primary",
+  video_intro: "bg-pink-500/10 text-pink-500",
+  video_submitted: "bg-emerald-500/10 text-emerald-500",
   interview: "bg-indigo-500/10 text-indigo-500",
   selected: "bg-primary/10 text-primary",
   rejected: "bg-destructive/10 text-destructive",
