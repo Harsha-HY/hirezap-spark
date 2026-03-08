@@ -358,6 +358,35 @@ const HRCandidatesView = ({ companyId }: Props) => {
     fetchApplications();
   };
 
+  const pollForAnalysis = async (appId: string) => {
+    for (let i = 0; i < 30; i++) { // poll for up to 60 seconds
+      await new Promise((r) => setTimeout(r, 2000));
+      const { data: updated } = await supabase
+        .from("applications")
+        .select("video_score, video_analysis")
+        .eq("id", appId)
+        .maybeSingle();
+
+      if (updated?.video_analysis) {
+        const va = updated.video_analysis as any;
+        if (va.status === "processing") continue;
+        if (va.status === "failed") {
+          toast({ title: "Video Analysis Failed", description: va.error || "Please retry.", variant: "destructive" });
+          setAnalyzingVideo(false);
+          return;
+        }
+        // Analysis complete
+        setVideoDialog((prev: any) => prev ? { ...prev, video_analysis: updated.video_analysis, video_score: updated.video_score } : prev);
+        toast({ title: "✅ Analysis Complete", description: `Overall Score: ${updated.video_score}/100` });
+        setAnalyzingVideo(false);
+        fetchApplications();
+        return;
+      }
+    }
+    setAnalyzingVideo(false);
+    toast({ title: "Timeout", description: "Analysis is taking longer than expected. Please check back later." });
+  };
+
   const handleViewVideo = async (app: any) => {
     setVideoDialog(app);
     setVideoSignedUrl(null);
@@ -366,23 +395,25 @@ const HRCandidatesView = ({ companyId }: Props) => {
       const { data } = await supabase.storage.from("videos").createSignedUrl(app.video_url, 3600);
       if (data?.signedUrl) setVideoSignedUrl(data.signedUrl);
     }
-    // Auto-trigger AI analysis if not already done
-    if (app.video_url && !app.video_analysis) {
+    // Auto-trigger AI analysis if not already done (skip if already analyzed or processing)
+    const va = app.video_analysis as any;
+    if (app.video_url && (!va || va.status === "failed")) {
       setAnalyzingVideo(true);
       try {
-        const { data, error } = await supabase.functions.invoke("analyze-video", {
+        const { error } = await supabase.functions.invoke("analyze-video", {
           body: { applicationId: app.id },
         });
         if (error) throw error;
-        if (data?.analysis) {
-          setVideoDialog((prev: any) => prev ? { ...prev, video_analysis: data.analysis, video_score: data.analysis.overall_score } : prev);
-        }
+        // Poll for results
+        pollForAnalysis(app.id);
       } catch (e: any) {
         console.error("Video analysis error:", e);
         toast({ title: "Video Analysis", description: "AI analysis failed. You can retry later.", variant: "destructive" });
+        setAnalyzingVideo(false);
       }
-      setAnalyzingVideo(false);
-      fetchApplications();
+    } else if (va?.status === "processing") {
+      setAnalyzingVideo(true);
+      pollForAnalysis(app.id);
     }
   };
 
@@ -390,19 +421,15 @@ const HRCandidatesView = ({ companyId }: Props) => {
     if (!videoDialog) return;
     setAnalyzingVideo(true);
     try {
-      const { data, error } = await supabase.functions.invoke("analyze-video", {
+      const { error } = await supabase.functions.invoke("analyze-video", {
         body: { applicationId: videoDialog.id },
       });
       if (error) throw error;
-      if (data?.analysis) {
-        setVideoDialog((prev: any) => prev ? { ...prev, video_analysis: data.analysis, video_score: data.analysis.overall_score } : prev);
-        toast({ title: "✅ Analysis Complete", description: `Overall Score: ${data.analysis.overall_score}/100` });
-      }
+      pollForAnalysis(videoDialog.id);
     } catch (e: any) {
       toast({ title: "Error", description: e.message || "Analysis failed", variant: "destructive" });
+      setAnalyzingVideo(false);
     }
-    setAnalyzingVideo(false);
-    fetchApplications();
   };
 
   const handleOpenTechnicalRound = async (app: Application & { candidate_name: string; job_title: string }) => {
@@ -1043,7 +1070,7 @@ const HRCandidatesView = ({ companyId }: Props) => {
                 </div>
               )}
 
-              {videoDialog.video_analysis && !analyzingVideo && (() => {
+              {videoDialog.video_analysis && !analyzingVideo && videoDialog.video_analysis.status !== "processing" && videoDialog.video_analysis.status !== "failed" && (() => {
                 const va = videoDialog.video_analysis;
                 const metrics = [
                   { key: "energy_level", label: "⚡ Energy Level", icon: "⚡" },
@@ -1139,7 +1166,7 @@ const HRCandidatesView = ({ companyId }: Props) => {
                 );
               })()}
 
-              {!videoDialog.video_analysis && !analyzingVideo && (
+              {(!videoDialog.video_analysis || videoDialog.video_analysis?.status === "failed") && !analyzingVideo && (
                 <Button variant="outline" onClick={handleRetryVideoAnalysis} disabled={analyzingVideo}>
                   🤖 Analyze with AI
                 </Button>

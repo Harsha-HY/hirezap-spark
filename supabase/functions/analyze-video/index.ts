@@ -35,6 +35,30 @@ Deno.serve(async (req) => {
     if (appErr || !application) throw new Error("Application not found");
     if (!application.video_url) throw new Error("No video uploaded");
 
+    // Mark as processing
+    await supabase
+      .from("applications")
+      .update({ video_analysis: { status: "processing" } })
+      .eq("id", applicationId);
+
+    // Start background processing
+    EdgeRuntime.waitUntil(processVideoAnalysis(supabase, application, lovableApiKey));
+
+    return new Response(JSON.stringify({ success: true, status: "processing" }), {
+      status: 200,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  } catch (err) {
+    console.error("analyze-video error:", err);
+    return new Response(JSON.stringify({ error: err instanceof Error ? err.message : "Unknown error" }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+});
+
+async function processVideoAnalysis(supabase: any, application: any, lovableApiKey: string) {
+  try {
     const { data: job } = await supabase
       .from("jobs")
       .select("title, department, skills_required")
@@ -47,16 +71,28 @@ Deno.serve(async (req) => {
       .eq("id", application.candidate_id)
       .maybeSingle();
 
-    // Create a signed URL for the video (valid 1 hour) — no download needed
-    const { data: signedData, error: signErr } = await supabase.storage
+    // Download video — limit to first 1.5MB to avoid memory issues
+    const { data: videoData, error: videoErr } = await supabase.storage
       .from("videos")
-      .createSignedUrl(application.video_url, 3600);
+      .download(application.video_url);
 
-    if (signErr || !signedData?.signedUrl) {
-      throw new Error("Could not create signed URL for video: " + (signErr?.message || ""));
+    if (videoErr || !videoData) {
+      throw new Error("Could not download video: " + (videoErr?.message || ""));
     }
 
-    const videoUrl = signedData.signedUrl;
+    const fullBytes = new Uint8Array(await videoData.arrayBuffer());
+    // Take at most 1.5MB to stay within memory limits
+    const maxBytes = 1.5 * 1024 * 1024;
+    const videoBytes = fullBytes.length > maxBytes ? fullBytes.slice(0, maxBytes) : fullBytes;
+
+    // Convert to base64 in chunks to avoid stack overflow
+    let binary = "";
+    const chunkSize = 8192;
+    for (let i = 0; i < videoBytes.length; i += chunkSize) {
+      const chunk = videoBytes.subarray(i, Math.min(i + chunkSize, videoBytes.length));
+      binary += String.fromCharCode(...chunk);
+    }
+    const videoBase64 = btoa(binary);
 
     const prompt = `You are an expert HR recruitment analyst reviewing a candidate's video introduction.
 
@@ -96,7 +132,7 @@ Return ONLY valid JSON with these exact fields:
   "improvements": ["area1", "area2"]
 }`;
 
-    // Send video URL to Gemini — it will fetch the video itself
+    // Send as data URL with proper MIME type — required by Gemini for non-image formats
     const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -115,7 +151,7 @@ Return ONLY valid JSON with these exact fields:
             content: [
               {
                 type: "image_url",
-                image_url: { url: videoUrl },
+                image_url: { url: `data:video/webm;base64,${videoBase64}` },
               },
               {
                 type: "text",
@@ -131,17 +167,7 @@ Return ONLY valid JSON with these exact fields:
     if (!aiResponse.ok) {
       const errText = await aiResponse.text();
       console.error("AI gateway error:", aiResponse.status, errText);
-      if (aiResponse.status === 429) {
-        return new Response(JSON.stringify({ error: "Rate limited, please try again later" }), {
-          status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      if (aiResponse.status === 402) {
-        return new Response(JSON.stringify({ error: "Payment required for AI" }), {
-          status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      throw new Error(`AI error: ${aiResponse.status} - ${errText}`);
+      throw new Error(`AI error: ${aiResponse.status}`);
     }
 
     const aiData = await aiResponse.json();
@@ -172,22 +198,22 @@ Return ONLY valid JSON with these exact fields:
       };
     }
 
-    const { error: updateErr } = await supabase
+    await supabase
       .from("applications")
       .update({ video_score: analysis.overall_score, video_analysis: analysis })
-      .eq("id", applicationId);
+      .eq("id", application.id);
 
-    if (updateErr) throw new Error("Failed to save video analysis: " + updateErr.message);
-
-    return new Response(JSON.stringify({ success: true, analysis }), {
-      status: 200,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    console.log("Video analysis complete for application:", application.id);
   } catch (err) {
-    console.error("analyze-video error:", err);
-    return new Response(JSON.stringify({ error: err instanceof Error ? err.message : "Unknown error" }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    console.error("Background video analysis failed:", err);
+    await supabase
+      .from("applications")
+      .update({
+        video_analysis: {
+          status: "failed",
+          error: err instanceof Error ? err.message : "Unknown error",
+        },
+      })
+      .eq("id", application.id);
   }
-});
+}
