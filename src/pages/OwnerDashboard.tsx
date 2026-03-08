@@ -108,11 +108,12 @@ const OwnerDashboard = () => {
 
         {/* Nav */}
         <nav className="flex-1 px-3 py-4 space-y-1">
-          {navItems.map(({ icon: Icon, label, active }) => (
+          {navItems.map(({ icon: Icon, label }) => (
             <button
               key={label}
+              onClick={() => handleNavClick(label)}
               className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
-                active
+                activeNav === label
                   ? "bg-primary/10 text-primary"
                   : "text-muted-foreground hover:bg-secondary hover:text-foreground"
               }`}
