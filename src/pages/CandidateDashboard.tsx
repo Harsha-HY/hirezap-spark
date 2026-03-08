@@ -3,10 +3,15 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Zap, LayoutDashboard, Briefcase, MessageSquare, Settings,
-  Bell, User, LogOut, CheckCircle2, Clock, Lock
+  Bell, User, LogOut, CheckCircle2, Clock, Lock, FileText,
+  Upload, Video, ExternalLink
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
+import { useToast } from "@/hooks/use-toast";
+import NegotiationChat from "@/components/NegotiationChat";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
 
 const stages = [
   { key: "applied", label: "Applied", icon: "✅" },
@@ -43,6 +48,15 @@ const CandidateDashboard = () => {
   const [notifications, setNotifications] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeSidebar, setActiveSidebar] = useState("Dashboard");
+  const [offerLetter, setOfferLetter] = useState<any>(null);
+  const [companyName, setCompanyName] = useState("");
+  const [interviews, setInterviews] = useState<any[]>([]);
+  const [bgvDocs, setBgvDocs] = useState<any[]>([]);
+  const [uploading, setUploading] = useState<string | null>(null);
+  const [negotiationOpen, setNegotiationOpen] = useState(false);
+  const [declineOpen, setDeclineOpen] = useState(false);
+  const [declineReason, setDeclineReason] = useState("");
+  const { toast } = useToast();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -84,6 +98,33 @@ const CandidateDashboard = () => {
         setSubmittedTestAppIds(new Set());
       }
     }
+
+    // Fetch offer letters, interviews, BGV docs
+    const { data: offers } = await supabase
+      .from("offer_letters")
+      .select("*")
+      .eq("candidate_id", userData.id)
+      .order("created_at", { ascending: false })
+      .limit(1);
+    if (offers?.length) {
+      setOfferLetter(offers[0]);
+      // Get company name
+      const { data: comp } = await supabase.from("companies").select("company_name").eq("id", (offers[0] as any).company_id).maybeSingle();
+      if (comp) setCompanyName(comp.company_name);
+    }
+
+    const { data: interviewData } = await supabase
+      .from("interviews")
+      .select("*")
+      .eq("candidate_id", userData.id)
+      .order("scheduled_date", { ascending: false });
+    if (interviewData) setInterviews(interviewData as any);
+
+    const { data: bgvData } = await supabase
+      .from("bgv_documents")
+      .select("*")
+      .eq("candidate_id", userData.id);
+    if (bgvData) setBgvDocs(bgvData as any);
 
     const { data: notifs } = await supabase
       .from("notifications")
@@ -241,8 +282,9 @@ const CandidateDashboard = () => {
                       : rawStage === "technical_round" ? "technical_round"
                       : rawStage === "technical_test" ? "technical_round"
                       : rawStage === "technical_completed" ? "group_discussion"
-                      : rawStage === "interview" ? "hr_interview"
-                      : rawStage === "selected" ? "offer_letter"
+                      : rawStage === "gd_completed" ? "hr_interview"
+                      : rawStage === "interview" || rawStage === "hr_interview" ? "hr_interview"
+                      : rawStage === "offer_sent" || rawStage === "hired" || rawStage === "selected" || rawStage === "bgv" || rawStage === "onboarded" ? "offer_letter"
                       : rawStage;
                     const currentIdx = getStageIndex(normalizedStage);
                     const isCompleted = idx < currentIdx;
@@ -395,6 +437,188 @@ const CandidateDashboard = () => {
             )}
           </motion.div>
 
+          {/* Upcoming Interviews */}
+          {interviews.filter(i => i.status === "scheduled").length > 0 && (
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }} className="rounded-2xl border border-primary/30 bg-primary/5 p-6">
+              <h4 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">📅 Upcoming Interviews</h4>
+              <div className="space-y-3">
+                {interviews.filter(i => i.status === "scheduled").map(interview => (
+                  <div key={interview.id} className="rounded-xl border border-border bg-card p-4">
+                    <p className="font-medium text-foreground">{interview.round_type.replace(/_/g, " ")}</p>
+                    <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
+                      <span>📅 {interview.scheduled_date}</span>
+                      <span>⏰ {interview.scheduled_time}</span>
+                      <span>⏱ {interview.duration} min</span>
+                      <span>📍 {interview.mode.replace(/_/g, " ")}</span>
+                    </div>
+                    <p className="text-sm text-muted-foreground mt-1">With: {interview.interviewer_name}</p>
+                    {interview.meeting_link && (
+                      <a href={interview.meeting_link} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 mt-2 text-sm text-primary hover:underline">
+                        <ExternalLink className="h-3.5 w-3.5" /> Join Meeting
+                      </a>
+                    )}
+                    {interview.notes && <p className="text-xs text-muted-foreground mt-2 italic">{interview.notes}</p>}
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          )}
+
+          {/* Offer Letter Card */}
+          {offerLetter && (
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.28 }} className="rounded-2xl border-2 border-primary/40 bg-primary/5 p-6">
+              <h4 className="text-lg font-bold text-foreground mb-2">🎉 Congratulations!</h4>
+              <p className="text-sm text-muted-foreground mb-4">You received an offer from <span className="font-semibold text-foreground">{companyName}</span>!</p>
+              
+              <div className="grid grid-cols-2 gap-3 text-sm mb-4">
+                <div><span className="text-muted-foreground">Role:</span> <span className="font-medium text-foreground">{offerLetter.designation}</span></div>
+                <div><span className="text-muted-foreground">CTC:</span> <span className="font-medium text-foreground">₹{Number(offerLetter.ctc_total).toLocaleString()}/yr</span></div>
+                <div><span className="text-muted-foreground">Joining:</span> <span className="font-medium text-foreground">{offerLetter.joining_date}</span></div>
+                <div><span className="text-muted-foreground">Accept by:</span> <span className="font-medium text-foreground">{offerLetter.accept_by}</span></div>
+                <div><span className="text-muted-foreground">Location:</span> <span className="font-medium text-foreground">{offerLetter.work_location}</span></div>
+                <div><span className="text-muted-foreground">Type:</span> <span className="font-medium text-foreground">{offerLetter.work_type}</span></div>
+              </div>
+
+              {offerLetter.status === "sent" && (
+                <div className="flex gap-2 flex-wrap">
+                  <Button size="sm" onClick={async () => {
+                    await supabase.from("offer_letters").update({ status: "accepted", accepted_at: new Date().toISOString() } as any).eq("id", offerLetter.id);
+                    await supabase.from("applications").update({ current_stage: "hired", status: "hired" }).eq("id", offerLetter.application_id);
+                    // Notify HR
+                    const { data: hrUsers } = await supabase.from("users").select("id").eq("role", "hr").eq("company_id", offerLetter.company_id);
+                    for (const hr of (hrUsers || [])) {
+                      await supabase.from("notifications").insert({ user_id: hr.id, title: "🎉 Offer Accepted!", message: `${user?.full_name} accepted the offer! Joining: ${offerLetter.joining_date}` });
+                    }
+                    toast({ title: "🎉 Offer Accepted!", description: "Welcome aboard!" });
+                    fetchData();
+                  }} className="gap-1">
+                    <CheckCircle2 className="h-4 w-4" /> Accept Offer
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => setNegotiationOpen(true)} className="gap-1">
+                    💬 Negotiate
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => setDeclineOpen(true)} className="text-destructive gap-1">
+                    ❌ Decline
+                  </Button>
+                </div>
+              )}
+              {offerLetter.status === "accepted" && (
+                <p className="text-sm font-semibold text-primary">✅ Offer Accepted</p>
+              )}
+              {offerLetter.status === "declined" && (
+                <p className="text-sm font-semibold text-destructive">Offer Declined</p>
+              )}
+            </motion.div>
+          )}
+
+          {/* Decline Dialog */}
+          {declineOpen && offerLetter && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-0 z-50 bg-background/80 flex items-center justify-center p-4">
+              <div className="rounded-2xl border border-border bg-card p-6 w-full max-w-sm space-y-4">
+                <h4 className="text-lg font-bold text-foreground">Decline Offer</h4>
+                <Select value={declineReason} onValueChange={setDeclineReason}>
+                  <SelectTrigger><SelectValue placeholder="Select reason..." /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Got better offer">Got better offer</SelectItem>
+                    <SelectItem value="Personal reasons">Personal reasons</SelectItem>
+                    <SelectItem value="Location issue">Location issue</SelectItem>
+                    <SelectItem value="Salary not matching">Salary not matching</SelectItem>
+                    <SelectItem value="Other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={() => setDeclineOpen(false)} className="flex-1">Cancel</Button>
+                  <Button variant="destructive" onClick={async () => {
+                    await supabase.from("offer_letters").update({ status: "declined", decline_reason: declineReason } as any).eq("id", offerLetter.id);
+                    const { data: hrUsers } = await supabase.from("users").select("id").eq("role", "hr").eq("company_id", offerLetter.company_id);
+                    for (const hr of (hrUsers || [])) {
+                      await supabase.from("notifications").insert({ user_id: hr.id, title: "❌ Offer Declined", message: `${user?.full_name} declined the offer. Reason: ${declineReason}` });
+                    }
+                    toast({ title: "Offer Declined" });
+                    setDeclineOpen(false);
+                    fetchData();
+                  }} className="flex-1">Confirm Decline</Button>
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+          {/* BGV Documents */}
+          {applications[0]?.current_stage === "hired" && (
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="rounded-2xl border border-border bg-card p-6">
+              <h4 className="text-lg font-bold text-foreground mb-2">📋 Document Submission (BGV)</h4>
+              <p className="text-sm text-muted-foreground mb-4">Please upload the following documents for verification.</p>
+
+              {["Degree Certificate", "Experience Letter", "Last 3 Salary Slips", "Aadhaar Card", "PAN Card", "Bank Details"].map(docType => {
+                const existing = bgvDocs.find(d => d.document_type === docType);
+                return (
+                  <div key={docType} className="flex items-center justify-between py-2.5 border-b border-border last:border-0">
+                    <div className="flex items-center gap-2">
+                      {existing ? (
+                        <CheckCircle2 className={`h-4 w-4 ${existing.verified ? "text-primary" : "text-amber-500"}`} />
+                      ) : (
+                        <div className="h-4 w-4 rounded border border-border" />
+                      )}
+                      <span className="text-sm text-foreground">{docType}</span>
+                      {existing?.verified && <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded">Verified</span>}
+                    </div>
+                    {existing ? (
+                      <span className="text-xs text-primary">Uploaded</span>
+                    ) : (
+                      <label className="cursor-pointer">
+                        <input type="file" className="hidden" accept=".pdf,.jpg,.jpeg,.png" onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (!file || !user || !applications[0]) return;
+                          setUploading(docType);
+                          const path = `${user.id}/${docType.replace(/ /g, "_")}_${Date.now()}.${file.name.split(".").pop()}`;
+                          const { error: uploadError } = await supabase.storage.from("bgv-documents").upload(path, file);
+                          if (uploadError) { toast({ title: "Upload Error", description: uploadError.message, variant: "destructive" }); setUploading(null); return; }
+                          await supabase.from("bgv_documents").insert({ application_id: applications[0].id, candidate_id: user.id, document_type: docType, file_url: path } as any);
+                          toast({ title: "✅ Uploaded", description: `${docType} uploaded successfully.` });
+                          setUploading(null);
+                          fetchData();
+                        }} />
+                        <span className="text-xs text-primary hover:underline flex items-center gap-1">
+                          {uploading === docType ? <span className="animate-spin">⏳</span> : <Upload className="h-3 w-3" />}
+                          Upload
+                        </span>
+                      </label>
+                    )}
+                  </div>
+                );
+              })}
+
+              <div className="mt-3">
+                <div className="h-2 rounded-full bg-muted overflow-hidden">
+                  <div className="h-full bg-primary transition-all" style={{ width: `${(bgvDocs.length / 6) * 100}%` }} />
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">{bgvDocs.length}/6 documents uploaded</p>
+              </div>
+            </motion.div>
+          )}
+
+          {/* Onboarding */}
+          {applications[0]?.current_stage === "onboarded" && (
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="rounded-2xl border-2 border-primary/30 bg-primary/5 p-6">
+              <h4 className="text-lg font-bold text-foreground mb-2">🎉 Welcome to {companyName}!</h4>
+              <p className="text-sm text-muted-foreground mb-4">Your Day 1 Schedule:</p>
+              <div className="space-y-2">
+                {[
+                  { time: "9:00 AM", task: "Collect laptop & ID card" },
+                  { time: "10:00 AM", task: "HR induction" },
+                  { time: "11:00 AM", task: "Meet your team" },
+                  { time: "2:00 PM", task: "System setup & access" },
+                  { time: "4:00 PM", task: "30-60-90 day plan discussion" },
+                ].map(item => (
+                  <div key={item.time} className="flex items-center gap-3 text-sm">
+                    <span className="font-mono text-xs text-muted-foreground w-20">{item.time}</span>
+                    <span className="text-foreground">{item.task}</span>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          )}
+
           {/* Messages */}
           <motion.div
             id="messages"
@@ -420,7 +644,7 @@ const CandidateDashboard = () => {
                     }`}
                   >
                     <p className="text-sm font-medium text-foreground">{n.title}</p>
-                    <p className="text-sm text-muted-foreground mt-1">{n.message}</p>
+                    <p className="text-sm text-muted-foreground mt-1 whitespace-pre-line">{n.message}</p>
                     <p className="text-xs text-muted-foreground mt-2">
                       {new Date(n.created_at).toLocaleString()}
                     </p>
@@ -434,6 +658,18 @@ const CandidateDashboard = () => {
             <h4 className="text-lg font-bold text-foreground mb-2">Settings</h4>
             <p className="text-sm text-muted-foreground">Profile and notification settings will appear here.</p>
           </motion.div>
+
+          {/* Negotiation Chat */}
+          {offerLetter && (
+            <NegotiationChat
+              offerId={offerLetter.id}
+              currentUserId={user?.id || ""}
+              currentUserRole="candidate"
+              currentUserName={user?.full_name || ""}
+              open={negotiationOpen}
+              onOpenChange={setNegotiationOpen}
+            />
+          )}
         </main>
       </div>
     </div>

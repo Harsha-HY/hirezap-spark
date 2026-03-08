@@ -27,8 +27,10 @@ export type Database = {
           expected_ctc: number
           experience_years: number
           id: string
+          interview_score: number | null
           job_id: string
           notice_period: number
+          overall_score: number | null
           photo_url: string | null
           resume_score: number | null
           resume_url: string | null
@@ -52,8 +54,10 @@ export type Database = {
           expected_ctc: number
           experience_years: number
           id?: string
+          interview_score?: number | null
           job_id: string
           notice_period: number
+          overall_score?: number | null
           photo_url?: string | null
           resume_score?: number | null
           resume_url?: string | null
@@ -77,8 +81,10 @@ export type Database = {
           expected_ctc?: number
           experience_years?: number
           id?: string
+          interview_score?: number | null
           job_id?: string
           notice_period?: number
+          overall_score?: number | null
           photo_url?: string | null
           resume_score?: number | null
           resume_url?: string | null
@@ -172,6 +178,50 @@ export type Database = {
             columns: ["job_id"]
             isOneToOne: false
             referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bgv_documents: {
+        Row: {
+          application_id: string
+          candidate_id: string
+          created_at: string
+          document_type: string
+          file_url: string
+          id: string
+          verified: boolean
+          verified_at: string | null
+          verified_by: string | null
+        }
+        Insert: {
+          application_id: string
+          candidate_id: string
+          created_at?: string
+          document_type: string
+          file_url: string
+          id?: string
+          verified?: boolean
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Update: {
+          application_id?: string
+          candidate_id?: string
+          created_at?: string
+          document_type?: string
+          file_url?: string
+          id?: string
+          verified?: boolean
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bgv_documents_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "applications"
             referencedColumns: ["id"]
           },
         ]
@@ -376,6 +426,94 @@ export type Database = {
           },
         ]
       }
+      interviews: {
+        Row: {
+          application_id: string
+          candidate_id: string
+          company_id: string
+          created_at: string
+          duration: number
+          id: string
+          interviewer_id: string
+          interviewer_name: string
+          job_id: string
+          meeting_link: string | null
+          mode: string
+          notes: string | null
+          recommendation: string | null
+          round_type: string
+          scheduled_date: string
+          scheduled_time: string
+          scorecard: Json | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          application_id: string
+          candidate_id: string
+          company_id: string
+          created_at?: string
+          duration?: number
+          id?: string
+          interviewer_id: string
+          interviewer_name: string
+          job_id: string
+          meeting_link?: string | null
+          mode?: string
+          notes?: string | null
+          recommendation?: string | null
+          round_type?: string
+          scheduled_date: string
+          scheduled_time: string
+          scorecard?: Json | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          application_id?: string
+          candidate_id?: string
+          company_id?: string
+          created_at?: string
+          duration?: number
+          id?: string
+          interviewer_id?: string
+          interviewer_name?: string
+          job_id?: string
+          meeting_link?: string | null
+          mode?: string
+          notes?: string | null
+          recommendation?: string | null
+          round_type?: string
+          scheduled_date?: string
+          scheduled_time?: string
+          scorecard?: Json | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "interviews_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "applications"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "interviews_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "interviews_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       jobs: {
         Row: {
           applications_count: number
@@ -460,6 +598,41 @@ export type Database = {
           },
         ]
       }
+      negotiation_messages: {
+        Row: {
+          created_at: string
+          id: string
+          message: string
+          offer_id: string
+          sender_id: string
+          sender_role: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message: string
+          offer_id: string
+          sender_id: string
+          sender_role: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message?: string
+          offer_id?: string
+          sender_id?: string
+          sender_role?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "negotiation_messages_offer_id_fkey"
+            columns: ["offer_id"]
+            isOneToOne: false
+            referencedRelation: "offer_letters"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notifications: {
         Row: {
           created_at: string
@@ -486,6 +659,106 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      offer_letters: {
+        Row: {
+          accept_by: string
+          accepted_at: string | null
+          application_id: string
+          basic_salary: number
+          candidate_id: string
+          company_id: string
+          created_at: string
+          ctc_total: number
+          decline_reason: string | null
+          department: string
+          designation: string
+          esops: number | null
+          hra: number
+          id: string
+          job_id: string
+          joining_date: string
+          other_allowances: number
+          performance_bonus: number
+          probation_period: string
+          status: string
+          updated_at: string
+          work_location: string
+          work_type: string
+        }
+        Insert: {
+          accept_by: string
+          accepted_at?: string | null
+          application_id: string
+          basic_salary?: number
+          candidate_id: string
+          company_id: string
+          created_at?: string
+          ctc_total: number
+          decline_reason?: string | null
+          department: string
+          designation: string
+          esops?: number | null
+          hra?: number
+          id?: string
+          job_id: string
+          joining_date: string
+          other_allowances?: number
+          performance_bonus?: number
+          probation_period?: string
+          status?: string
+          updated_at?: string
+          work_location: string
+          work_type?: string
+        }
+        Update: {
+          accept_by?: string
+          accepted_at?: string | null
+          application_id?: string
+          basic_salary?: number
+          candidate_id?: string
+          company_id?: string
+          created_at?: string
+          ctc_total?: number
+          decline_reason?: string | null
+          department?: string
+          designation?: string
+          esops?: number | null
+          hra?: number
+          id?: string
+          job_id?: string
+          joining_date?: string
+          other_allowances?: number
+          performance_bonus?: number
+          probation_period?: string
+          status?: string
+          updated_at?: string
+          work_location?: string
+          work_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "offer_letters_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "applications"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "offer_letters_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "offer_letters_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       test_answers: {
         Row: {
