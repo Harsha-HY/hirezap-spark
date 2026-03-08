@@ -324,7 +324,7 @@ const ReviewAssessment = () => {
       }
 
       toast({ title: "Approved!", description: "Test sent to candidate. They will be notified." });
-      navigate("/hr-dashboard");
+      navigate(userRole === "manager" ? "/manager-dashboard" : "/hr-dashboard");
     } catch (e: any) {
       toast({ title: "Error", description: e.message, variant: "destructive" });
     }
