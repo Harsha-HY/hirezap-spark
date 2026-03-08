@@ -30,6 +30,7 @@ const navItems = [
 
 const OwnerDashboard = () => {
   const navigate = useNavigate();
+  const [activeNav, setActiveNav] = useState("Companies");
   const [ownerName, setOwnerName] = useState("");
   const [companies, setCompanies] = useState<Company[]>([]);
   const [panelOpen, setPanelOpen] = useState(false);
