@@ -54,6 +54,7 @@ const CandidateDashboard = () => {
   const [bgvDocs, setBgvDocs] = useState<any[]>([]);
   const [uploading, setUploading] = useState<string | null>(null);
   const [negotiationOpen, setNegotiationOpen] = useState(false);
+  const [gdInfo, setGdInfo] = useState<any>(null);
   const [declineOpen, setDeclineOpen] = useState(false);
   const [declineReason, setDeclineReason] = useState("");
   const { toast } = useToast();
@@ -119,6 +120,18 @@ const CandidateDashboard = () => {
       .eq("candidate_id", userData.id)
       .order("scheduled_date", { ascending: false });
     if (interviewData) setInterviews(interviewData as any);
+
+    // Fetch GD info for candidate
+    if (apps?.length) {
+      const jobIds = [...new Set(apps.map((a: any) => a.job_id))];
+      const { data: gdGroups } = await supabase.from("gd_groups").select("*, group_discussions(*)");
+      if (gdGroups) {
+        const myGroup = (gdGroups as any[]).find(g => g.candidate_ids?.includes(userData.id));
+        if (myGroup?.group_discussions) {
+          setGdInfo({ ...myGroup.group_discussions, group_name: myGroup.group_name });
+        }
+      }
+    }
 
     const { data: bgvData } = await supabase
       .from("bgv_documents")
@@ -347,6 +360,25 @@ const CandidateDashboard = () => {
                             >
                               💻 Take Technical Test
                             </Button>
+                          )}
+                          {isCurrent && stage.key === "group_discussion" && gdInfo && (
+                            <div className="flex flex-col gap-1">
+                              <span className="text-xs text-muted-foreground">
+                                📅 {gdInfo.scheduled_date} at {gdInfo.scheduled_time} • Group {gdInfo.group_name}
+                              </span>
+                              <span className="text-xs text-muted-foreground">Topic: {gdInfo.topic}</span>
+                              {gdInfo.meeting_link && (
+                                <a
+                                  href={gdInfo.meeting_link}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                >
+                                  <Button size="sm" className="bg-primary text-primary-foreground h-7 px-3 text-xs gap-1">
+                                    <ExternalLink className="h-3 w-3" /> Join GD Call
+                                  </Button>
+                                </a>
+                              )}
+                            </div>
                           )}
                         </div>
                       </div>

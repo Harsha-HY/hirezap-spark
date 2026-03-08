@@ -375,6 +375,7 @@ export type Database = {
           id: string
           instructions: string | null
           job_id: string
+          meeting_link: string | null
           scheduled_date: string
           scheduled_time: string
           status: string
@@ -389,6 +390,7 @@ export type Database = {
           id?: string
           instructions?: string | null
           job_id: string
+          meeting_link?: string | null
           scheduled_date: string
           scheduled_time: string
           status?: string
@@ -403,6 +405,7 @@ export type Database = {
           id?: string
           instructions?: string | null
           job_id?: string
+          meeting_link?: string | null
           scheduled_date?: string
           scheduled_time?: string
           status?: string

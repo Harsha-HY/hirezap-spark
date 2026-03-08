@@ -20,6 +20,7 @@ interface GD {
   duration: number;
   status: string;
   instructions: string | null;
+  meeting_link?: string | null;
   created_at: string;
   job_title?: string;
 }
@@ -332,8 +333,13 @@ const GDDashboard = () => {
                             <span className="flex items-center gap-1"><Calendar className="h-3 w-3" /> {gd.scheduled_date}</span>
                             <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {gd.scheduled_time}</span>
                             <span>{gd.duration} min</span>
-                            <span className="flex items-center gap-1"><Users className="h-3 w-3" /> {getCandidateCount(gd.id)} candidates</span>
+                             <span className="flex items-center gap-1"><Users className="h-3 w-3" /> {getCandidateCount(gd.id)} candidates</span>
                           </div>
+                          {(gd as any).meeting_link && (
+                            <a href={(gd as any).meeting_link} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-primary hover:underline mt-1">
+                              🔗 Meeting Link: {(gd as any).meeting_link}
+                            </a>
+                          )}
                           {gdGroups.length > 0 && (
                             <div className="flex gap-2 mt-2">
                               {gdGroups.map(g => (

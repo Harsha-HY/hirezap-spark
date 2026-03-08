@@ -41,6 +41,7 @@ const CreateGDPanel = ({ open, onOpenChange, companyId, userId, userName, userRo
   const [scheduledTime, setScheduledTime] = useState("");
   const [duration, setDuration] = useState("20");
   const [instructions, setInstructions] = useState("");
+  const [meetingLink, setMeetingLink] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [loadingCandidates, setLoadingCandidates] = useState(false);
 
@@ -156,6 +157,7 @@ const CreateGDPanel = ({ open, onOpenChange, companyId, userId, userName, userRo
           scheduled_time: scheduledTime,
           duration: parseInt(duration),
           instructions: instructions || null,
+          meeting_link: meetingLink || null,
           created_by: userId,
           status: "scheduled",
         } as any)
@@ -180,7 +182,7 @@ const CreateGDPanel = ({ open, onOpenChange, companyId, userId, userName, userRo
         await supabase.from("notifications").insert({
           user_id: app.candidate_id,
           title: "🎉 GD Round Scheduled!",
-          message: `You are selected for Group Discussion. Topic: ${topic}. Date: ${scheduledDate}, Time: ${scheduledTime}, Duration: ${duration} min. Group: ${groupName}. ${instructions ? `Instructions: ${instructions}` : ""} Be ready with good internet, camera, mic, and quiet environment.`,
+          message: `You are selected for Group Discussion. Topic: ${topic}. Date: ${scheduledDate}, Time: ${scheduledTime}, Duration: ${duration} min. Group: ${groupName}.${meetingLink ? ` Join here: ${meetingLink}` : ""} ${instructions ? `Instructions: ${instructions}` : ""} Be ready with good internet, camera, mic, and quiet environment.`,
         });
       }
 
@@ -216,6 +218,7 @@ const CreateGDPanel = ({ open, onOpenChange, companyId, userId, userName, userRo
       setScheduledDate("");
       setScheduledTime("");
       setInstructions("");
+      setMeetingLink("");
     } catch (e: any) {
       toast({ title: "Error", description: e.message, variant: "destructive" });
     }
@@ -365,6 +368,18 @@ const CreateGDPanel = ({ open, onOpenChange, companyId, userId, userName, userRo
                 <SelectItem value="30">30 minutes</SelectItem>
               </SelectContent>
             </Select>
+          </div>
+
+          {/* Meeting Link */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-foreground">Meeting Link (Google Meet / Zoom)</label>
+            <Input
+              value={meetingLink}
+              onChange={(e) => setMeetingLink(e.target.value)}
+              placeholder="https://meet.google.com/abc-defg-hij"
+              className="bg-secondary border-border"
+            />
+            <p className="text-xs text-muted-foreground">Paste your Google Meet or Zoom link. Candidates will see this link to join the GD.</p>
           </div>
 
           {/* Instructions */}
