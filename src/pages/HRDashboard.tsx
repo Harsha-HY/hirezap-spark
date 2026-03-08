@@ -278,13 +278,6 @@ const HRDashboard = () => {
               )}
             </motion.div>
 
-            {/* Aptitude Cutoff Settings - only for managers */}
-            {userRole === "manager" && companyId && (
-              <div className="mb-6">
-                <AptitudeCutoffCard companyId={companyId} />
-              </div>
-            )}
-
             {/* Recent Jobs Summary */}
             <HRJobsView jobs={jobs.slice(0, 5)} managers={managers} onPostJob={() => setPanelOpen(true)} />
           </>
