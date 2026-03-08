@@ -33,11 +33,7 @@ const Login = () => {
     });
 
     if (error) {
-      toast({
-        title: "Invalid credentials",
-        description: "Please check your details.",
-        variant: "destructive",
-      });
+      toast({ title: "Invalid credentials", description: "Please check your details.", variant: "destructive" });
       setLoading(false);
       return;
     }
@@ -55,38 +51,44 @@ const Login = () => {
       return;
     }
 
-    // Owner doesn't need company code
-    if (userData.role !== "owner") {
-      if (!companyCode.trim()) {
-        toast({ title: "Company code required", description: "Please enter your company code.", variant: "destructive" });
-        await supabase.auth.signOut();
-        setLoading(false);
-        return;
-      }
-      // Verify company code matches
-      if (userData.company_id) {
-        const { data: company } = await supabase
-          .from("companies")
-          .select("company_code")
-          .eq("id", userData.company_id)
-          .maybeSingle();
-
-        if (!company || company.company_code !== companyCode.trim()) {
-          toast({ title: "Invalid credentials", description: "Please check your details.", variant: "destructive" });
-          await supabase.auth.signOut();
-          setLoading(false);
-          return;
-        }
-      } else {
-        toast({ title: "Invalid credentials", description: "Please check your details.", variant: "destructive" });
-        await supabase.auth.signOut();
-        setLoading(false);
-        return;
-      }
+    // Owner: skip company code check entirely
+    if (userData.role === "owner") {
+      localStorage.setItem("userRole", userData.role);
+      navigate(roleRoutes[userData.role] || "/login");
+      setLoading(false);
+      return;
     }
 
-    const route = roleRoutes[userData.role] || "/login";
-    navigate(route);
+    // Non-owner roles require company code
+    if (!companyCode.trim()) {
+      toast({ title: "Company code required", description: "Please enter your company code.", variant: "destructive" });
+      await supabase.auth.signOut();
+      setLoading(false);
+      return;
+    }
+
+    if (!userData.company_id) {
+      toast({ title: "Invalid credentials", description: "Please check your details.", variant: "destructive" });
+      await supabase.auth.signOut();
+      setLoading(false);
+      return;
+    }
+
+    const { data: company } = await supabase
+      .from("companies")
+      .select("company_code")
+      .eq("id", userData.company_id)
+      .maybeSingle();
+
+    if (!company || company.company_code !== companyCode.trim()) {
+      toast({ title: "Invalid credentials", description: "Please check your details.", variant: "destructive" });
+      await supabase.auth.signOut();
+      setLoading(false);
+      return;
+    }
+
+    localStorage.setItem("userRole", userData.role);
+    navigate(roleRoutes[userData.role] || "/login");
     setLoading(false);
   };
 
