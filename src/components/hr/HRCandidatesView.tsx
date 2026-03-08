@@ -757,6 +757,18 @@ const HRCandidatesView = ({ companyId }: Props) => {
                               Tech Report
                             </Button>
                           )}
+                          {canMoveToGD && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleUpdateStage(app.id, "group_discussion")}
+                              className="text-cyan-500 hover:text-cyan-600 gap-1 text-xs"
+                              title="Move to Group Discussion"
+                            >
+                              <Users className="h-3.5 w-3.5" />
+                              Move to GD
+                            </Button>
+                          )}
                           {nextStage && app.current_stage !== "rejected" && app.current_stage !== "selected" && (
                             <Button
                               variant="ghost"
