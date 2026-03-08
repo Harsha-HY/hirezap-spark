@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Briefcase, MapPin, DollarSign, Clock, Zap, X, Target } from "lucide-react";
+import { Briefcase, MapPin, DollarSign, Clock, Zap, X, Target, FileText, Upload, Loader2, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -22,6 +22,10 @@ const AddJobPanel = ({ open, onOpenChange, companyId, hrUserId, managers, onJobC
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [skillInput, setSkillInput] = useState("");
+  const [pdfFile, setPdfFile] = useState<File | null>(null);
+  const [parsingPdf, setParsingPdf] = useState(false);
+  const [parsedQuestions, setParsedQuestions] = useState<any>(null);
+  const [questionCount, setQuestionCount] = useState(0);
   const [form, setForm] = useState({
     title: "",
     department: "",
@@ -53,6 +57,70 @@ const AddJobPanel = ({ open, onOpenChange, companyId, hrUserId, managers, onJobC
     setForm((p) => ({ ...p, skills: p.skills.filter((s) => s !== skill) }));
   };
 
+  const handlePdfUpload = async (file: File) => {
+    if (!file || file.type !== "application/pdf") {
+      toast({ title: "Invalid file", description: "Please upload a PDF file.", variant: "destructive" });
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast({ title: "File too large", description: "PDF must be under 5MB.", variant: "destructive" });
+      return;
+    }
+
+    setPdfFile(file);
+    setParsingPdf(true);
+    setParsedQuestions(null);
+
+    toast({ title: "🤖 Analyzing PDF...", description: "AI is converting your PDF into MCQ questions. Please wait." });
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      // No jobId yet since job isn't created, but we can pass empty
+      formData.append("jobId", "");
+
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/parse-pdf-questions`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          },
+          body: formData,
+        }
+      );
+
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.error || `Failed (${response.status})`);
+      }
+
+      const data = await response.json();
+      if (data.questions) {
+        setParsedQuestions(data.questions);
+        const count = data.questions.sections?.reduce(
+          (acc: number, sec: any) => acc + (sec.questions?.length || 0),
+          0
+        ) || 0;
+        setQuestionCount(count);
+        toast({
+          title: `✅ ${count} questions extracted!`,
+          description: "Questions will be saved with this job posting.",
+        });
+      }
+    } catch (err: any) {
+      toast({ title: "PDF parsing failed", description: err.message, variant: "destructive" });
+      setPdfFile(null);
+    }
+    setParsingPdf(false);
+  };
+
+  const removePdf = () => {
+    setPdfFile(null);
+    setParsedQuestions(null);
+    setQuestionCount(0);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -73,6 +141,7 @@ const AddJobPanel = ({ open, onOpenChange, companyId, hrUserId, managers, onJobC
       company_id: companyId,
       status: "open",
       aptitude_cutoff: form.aptitudeCutoff,
+      aptitude_questions: parsedQuestions || null,
     } as any);
 
     if (error) {
@@ -86,7 +155,7 @@ const AddJobPanel = ({ open, onOpenChange, companyId, hrUserId, managers, onJobC
       await supabase.from("notifications").insert({
         user_id: form.managerId,
         title: "New Job Posted",
-        message: `New job posted for your team: ${form.title}`,
+        message: `New job posted for your team: ${form.title}${parsedQuestions ? ` (${questionCount} aptitude questions attached)` : ""}`,
       });
     }
 
@@ -96,6 +165,9 @@ const AddJobPanel = ({ open, onOpenChange, companyId, hrUserId, managers, onJobC
       location: "", workType: "Onsite", experienceMin: "", experienceMax: "",
       skills: [], description: "", aptitudeCutoff: 60,
     });
+    setPdfFile(null);
+    setParsedQuestions(null);
+    setQuestionCount(0);
     onOpenChange(false);
     onJobCreated();
     setLoading(false);
@@ -220,6 +292,79 @@ const AddJobPanel = ({ open, onOpenChange, companyId, hrUserId, managers, onJobC
             />
           </div>
 
+          {/* Aptitude PDF Upload */}
+          <div className="rounded-lg border border-border bg-secondary/30 p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <FileText className="h-4 w-4 text-primary" />
+              <label className="text-sm font-medium text-foreground">Aptitude Test PDF</label>
+            </div>
+            <p className="text-[11px] text-muted-foreground mb-3">
+              Upload a PDF with aptitude questions for this role. AI will convert it into MCQs automatically.
+            </p>
+
+            {!pdfFile && !parsedQuestions && (
+              <label className="flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border hover:border-primary/50 bg-secondary/20 p-6 cursor-pointer transition-colors">
+                <Upload className="h-8 w-8 text-muted-foreground" />
+                <span className="text-sm text-muted-foreground">Click to upload PDF</span>
+                <span className="text-[10px] text-muted-foreground">Max 5MB • PDF only</span>
+                <input
+                  type="file"
+                  accept="application/pdf"
+                  className="hidden"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) handlePdfUpload(f);
+                  }}
+                />
+              </label>
+            )}
+
+            {parsingPdf && (
+              <div className="flex items-center gap-3 rounded-lg bg-primary/5 border border-primary/20 p-4">
+                <Loader2 className="h-5 w-5 text-primary animate-spin" />
+                <div>
+                  <p className="text-sm font-medium text-foreground">Analyzing PDF...</p>
+                  <p className="text-[11px] text-muted-foreground">AI is converting content to MCQ format</p>
+                </div>
+              </div>
+            )}
+
+            {parsedQuestions && !parsingPdf && (
+              <div className="rounded-lg bg-primary/5 border border-primary/20 p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle className="h-5 w-5 text-primary" />
+                    <span className="text-sm font-medium text-foreground">{questionCount} questions extracted</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={removePdf}
+                    className="text-muted-foreground hover:text-destructive transition-colors"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+                <p className="text-[11px] text-muted-foreground">{pdfFile?.name}</p>
+                {parsedQuestions.sections && (
+                  <div className="mt-2 space-y-1">
+                    {parsedQuestions.sections.map((sec: any, i: number) => (
+                      <div key={i} className="flex items-center justify-between text-xs">
+                        <span className="text-muted-foreground">{sec.name}</span>
+                        <span className="text-primary font-medium">{sec.questions?.length || 0} Qs</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {!parsedQuestions && !parsingPdf && !pdfFile && (
+              <p className="text-[10px] text-muted-foreground mt-2 italic">
+                Optional — If no PDF is uploaded, AI will auto-generate questions when a candidate reaches the aptitude stage.
+              </p>
+            )}
+          </div>
+
           {/* Aptitude Cutoff */}
           <div className="rounded-lg border border-border bg-secondary/30 p-4">
             <div className="flex items-center gap-2 mb-3">
@@ -247,7 +392,7 @@ const AddJobPanel = ({ open, onOpenChange, companyId, hrUserId, managers, onJobC
 
           <Button
             type="submit"
-            disabled={loading}
+            disabled={loading || parsingPdf}
             className="w-full rounded-lg py-6 text-sm font-semibold bg-primary text-primary-foreground hover:bg-primary/90 shadow-[0_0_20px_hsl(160,100%,45%,0.2)] transition-all mt-2"
           >
             {loading ? "Posting..." : "Post Job"}
