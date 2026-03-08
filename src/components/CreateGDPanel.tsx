@@ -41,6 +41,7 @@ const CreateGDPanel = ({ open, onOpenChange, companyId, userId, userName, userRo
   const [scheduledTime, setScheduledTime] = useState("");
   const [duration, setDuration] = useState("20");
   const [instructions, setInstructions] = useState("");
+  const [meetingLink, setMeetingLink] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [loadingCandidates, setLoadingCandidates] = useState(false);
 
