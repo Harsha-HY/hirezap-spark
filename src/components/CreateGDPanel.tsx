@@ -218,6 +218,7 @@ const CreateGDPanel = ({ open, onOpenChange, companyId, userId, userName, userRo
       setScheduledDate("");
       setScheduledTime("");
       setInstructions("");
+      setMeetingLink("");
     } catch (e: any) {
       toast({ title: "Error", description: e.message, variant: "destructive" });
     }
