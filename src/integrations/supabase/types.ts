@@ -215,6 +215,167 @@ export type Database = {
         }
         Relationships: []
       }
+      gd_groups: {
+        Row: {
+          candidate_ids: string[]
+          created_at: string
+          gd_id: string
+          group_name: string
+          id: string
+        }
+        Insert: {
+          candidate_ids?: string[]
+          created_at?: string
+          gd_id: string
+          group_name: string
+          id?: string
+        }
+        Update: {
+          candidate_ids?: string[]
+          created_at?: string
+          gd_id?: string
+          group_name?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gd_groups_gd_id_fkey"
+            columns: ["gd_id"]
+            isOneToOne: false
+            referencedRelation: "group_discussions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gd_scores: {
+        Row: {
+          ai_feedback: string | null
+          candidate_id: string
+          communication_score: number | null
+          created_at: string
+          gd_id: string
+          group_id: string | null
+          id: string
+          leadership_score: number | null
+          overall_gd_score: number | null
+          points_quality: number | null
+          relevance_score: number | null
+          speaking_percentage: number | null
+          speaking_time_minutes: number | null
+          times_spoke: number | null
+          verdict: string | null
+        }
+        Insert: {
+          ai_feedback?: string | null
+          candidate_id: string
+          communication_score?: number | null
+          created_at?: string
+          gd_id: string
+          group_id?: string | null
+          id?: string
+          leadership_score?: number | null
+          overall_gd_score?: number | null
+          points_quality?: number | null
+          relevance_score?: number | null
+          speaking_percentage?: number | null
+          speaking_time_minutes?: number | null
+          times_spoke?: number | null
+          verdict?: string | null
+        }
+        Update: {
+          ai_feedback?: string | null
+          candidate_id?: string
+          communication_score?: number | null
+          created_at?: string
+          gd_id?: string
+          group_id?: string | null
+          id?: string
+          leadership_score?: number | null
+          overall_gd_score?: number | null
+          points_quality?: number | null
+          relevance_score?: number | null
+          speaking_percentage?: number | null
+          speaking_time_minutes?: number | null
+          times_spoke?: number | null
+          verdict?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gd_scores_gd_id_fkey"
+            columns: ["gd_id"]
+            isOneToOne: false
+            referencedRelation: "group_discussions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gd_scores_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "gd_groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      group_discussions: {
+        Row: {
+          company_id: string
+          created_at: string
+          created_by: string
+          duration: number
+          id: string
+          instructions: string | null
+          job_id: string
+          scheduled_date: string
+          scheduled_time: string
+          status: string
+          topic: string
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          created_by: string
+          duration?: number
+          id?: string
+          instructions?: string | null
+          job_id: string
+          scheduled_date: string
+          scheduled_time: string
+          status?: string
+          topic: string
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          created_by?: string
+          duration?: number
+          id?: string
+          instructions?: string | null
+          job_id?: string
+          scheduled_date?: string
+          scheduled_time?: string
+          status?: string
+          topic?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "group_discussions_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "group_discussions_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       jobs: {
         Row: {
           applications_count: number
