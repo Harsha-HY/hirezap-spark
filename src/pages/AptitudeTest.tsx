@@ -67,6 +67,21 @@ const AptitudeTest = () => {
 
       setCandidateId(user.id);
 
+      // Check if already completed
+      const { data: completedApp } = await supabase
+        .from("applications")
+        .select("id")
+        .eq("candidate_id", user.id)
+        .eq("current_stage", "test_completed")
+        .maybeSingle();
+
+      if (completedApp) {
+        // Already completed - don't allow retake
+        setLoading(false);
+        setAuthorized(false);
+        return;
+      }
+
       const { data: app } = await supabase
         .from("applications")
         .select("*")
