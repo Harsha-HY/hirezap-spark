@@ -246,10 +246,14 @@ const AptitudeTest = () => {
 
     // Calculate score
     let correct = 0;
+    const totalQ = questions.length;
     answers.forEach((ans, i) => {
-      if (ans === defaultQuestions[i].correct) correct++;
+      if (questions[i] && ans !== null) {
+        const correctIdx = questions[i].correct_answer.charCodeAt(0) - 65;
+        if (ans === correctIdx) correct++;
+      }
     });
-    const score = Math.round((correct / 40) * 100);
+    const score = Math.round((correct / totalQ) * 100);
 
     // Save answers
     const answerRows = answers.map((ans, i) => ({
