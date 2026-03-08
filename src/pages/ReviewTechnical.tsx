@@ -383,10 +383,8 @@ const ReviewTechnical = () => {
   };
 
   const totalQuestions = dsaProblems.length + codingTasks.length + mcqQuestions.length;
-  const hrApproved = assessment?.hr_approved;
   const managerApproved = assessment?.manager_approved;
   const isApproved = assessment?.status === "approved";
-  const alreadyApproved = userRole === "hr" ? hrApproved : managerApproved;
 
   if (loading) {
     return (
