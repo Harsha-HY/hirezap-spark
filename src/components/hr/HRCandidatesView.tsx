@@ -1321,6 +1321,253 @@ const HRCandidatesView = ({ companyId }: Props) => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Technical Report Dialog */}
+      <Dialog open={!!technicalReportDialog} onOpenChange={() => setTechnicalReportDialog(null)}>
+        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>💻 Technical Round Report — {technicalReportDialog?.candidate_name}</DialogTitle>
+          </DialogHeader>
+          {technicalReportDialog && (() => {
+            const codeAnswers = technicalReportDialog.code_answers;
+            const report = codeAnswers?.ai_report;
+            const dsaAnswers = codeAnswers?.dsa_answers || {};
+            const codingAnswers = codeAnswers?.coding_answers || {};
+            const mcqAnswers = codeAnswers?.mcq_answers || {};
+            const questions = technicalAssessment as any;
+            const dsaProblems = questions?.dsa_problems || [];
+            const codingTasks = questions?.coding_tasks || [];
+            const mcqQuestions = questions?.mcq_questions || [];
+
+            if (!report && !codeAnswers) {
+              return (
+                <div className="py-8 text-center text-muted-foreground">
+                  <p>No technical round data available yet.</p>
+                </div>
+              );
+            }
+
+            return (
+              <div className="space-y-6">
+                {/* Score Overview */}
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+                  <div className="rounded-lg border border-border bg-muted/50 p-4 text-center">
+                    <p className={`text-2xl font-bold ${(report?.overall_score ?? 0) >= 70 ? "text-primary" : (report?.overall_score ?? 0) >= 50 ? "text-amber-500" : "text-destructive"}`}>
+                      {report?.overall_score ?? technicalReportDialog.technical_score ?? "—"}/100
+                    </p>
+                    <p className="text-xs text-muted-foreground">Overall Score</p>
+                  </div>
+                  <div className="rounded-lg border border-border bg-muted/50 p-4 text-center">
+                    <p className="text-2xl font-bold text-foreground">{report?.dsa_score ?? "—"}/100</p>
+                    <p className="text-xs text-muted-foreground">DSA Score</p>
+                  </div>
+                  <div className="rounded-lg border border-border bg-muted/50 p-4 text-center">
+                    <p className="text-2xl font-bold text-foreground">{report?.coding_score ?? "—"}/100</p>
+                    <p className="text-xs text-muted-foreground">Coding Score</p>
+                  </div>
+                  <div className="rounded-lg border border-border bg-muted/50 p-4 text-center">
+                    <p className="text-2xl font-bold text-foreground">{report?.mcq_score ?? "—"}/100</p>
+                    <p className="text-xs text-muted-foreground">MCQ Score</p>
+                  </div>
+                  <div className="rounded-lg border border-border bg-muted/50 p-4 text-center">
+                    <p className="text-2xl font-bold text-foreground">{report?.mcq_correct ?? "—"}/{report?.mcq_total ?? "—"}</p>
+                    <p className="text-xs text-muted-foreground">MCQ Correct</p>
+                  </div>
+                </div>
+
+                {/* DSA Problems Results */}
+                {report?.dsa_results?.length > 0 && (
+                  <div>
+                    <h3 className="text-sm font-semibold text-foreground mb-3">🧩 DSA Problems</h3>
+                    <div className="space-y-3">
+                      {report.dsa_results.map((r: any, i: number) => {
+                        const candidateCode = dsaAnswers[i] || "";
+                        return (
+                          <div key={i} className={`rounded-lg border p-4 ${r.correctness ? "border-primary/30 bg-primary/5" : "border-destructive/30 bg-destructive/5"}`}>
+                            <div className="flex items-start justify-between gap-2 mb-2">
+                              <div>
+                                <span className="text-sm font-semibold text-foreground">#{r.problem_number} {r.title}</span>
+                                {dsaProblems[i]?.difficulty && (
+                                  <span className={`ml-2 text-[10px] px-1.5 py-0.5 rounded-full ${r.correctness ? "bg-primary/10 text-primary" : "bg-destructive/10 text-destructive"}`}>
+                                    {dsaProblems[i].difficulty}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-2 shrink-0">
+                                <span className={`text-sm font-bold ${r.score >= 70 ? "text-primary" : r.score >= 40 ? "text-amber-500" : "text-destructive"}`}>
+                                  {r.score}/100
+                                </span>
+                                <span className={`text-xs font-medium ${r.correctness ? "text-primary" : "text-destructive"}`}>
+                                  {r.correctness ? "✓ Correct" : "✗ Incorrect"}
+                                </span>
+                              </div>
+                            </div>
+                            {dsaProblems[i]?.description && (
+                              <p className="text-xs text-muted-foreground mb-2 line-clamp-2">{dsaProblems[i].description}</p>
+                            )}
+                            <div className="flex gap-4 text-xs text-muted-foreground mb-2">
+                              <span>⏱ Time: {r.time_complexity || "N/A"}</span>
+                              <span>💾 Space: {r.space_complexity || "N/A"}</span>
+                              <span>⭐ Code Quality: {r.code_quality}/10</span>
+                            </div>
+                            {candidateCode && (
+                              <details className="mb-2">
+                                <summary className="text-xs font-medium text-foreground cursor-pointer hover:text-primary">View Candidate's Code</summary>
+                                <pre className="mt-2 p-3 rounded-lg bg-muted text-xs overflow-x-auto max-h-48 overflow-y-auto font-mono text-foreground border border-border">
+                                  {candidateCode}
+                                </pre>
+                              </details>
+                            )}
+                            {r.feedback && (
+                              <div className="mt-2 p-2 rounded bg-muted/50 border border-border">
+                                <p className="text-xs font-medium text-foreground mb-1">🤖 AI Feedback:</p>
+                                <p className="text-xs text-muted-foreground">{r.feedback}</p>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Coding Tasks Results */}
+                {report?.coding_results?.length > 0 && (
+                  <div>
+                    <h3 className="text-sm font-semibold text-foreground mb-3">💻 Coding Tasks</h3>
+                    <div className="space-y-3">
+                      {report.coding_results.map((r: any, i: number) => {
+                        const candidateCode = codingAnswers[i] || "";
+                        return (
+                          <div key={i} className={`rounded-lg border p-4 ${r.correctness ? "border-primary/30 bg-primary/5" : "border-destructive/30 bg-destructive/5"}`}>
+                            <div className="flex items-start justify-between gap-2 mb-2">
+                              <div>
+                                <span className="text-sm font-semibold text-foreground">#{r.task_number} {r.title}</span>
+                                {codingTasks[i]?.tech_stack && (
+                                  <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground">
+                                    {codingTasks[i].tech_stack}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-2 shrink-0">
+                                <span className={`text-sm font-bold ${r.score >= 70 ? "text-primary" : r.score >= 40 ? "text-amber-500" : "text-destructive"}`}>
+                                  {r.score}/100
+                                </span>
+                                <span className={`text-xs font-medium ${r.correctness ? "text-primary" : "text-destructive"}`}>
+                                  {r.correctness ? "✓ Correct" : "✗ Incorrect"}
+                                </span>
+                              </div>
+                            </div>
+                            {codingTasks[i]?.description && (
+                              <p className="text-xs text-muted-foreground mb-2 line-clamp-2">{codingTasks[i].description}</p>
+                            )}
+                            <div className="flex gap-4 text-xs text-muted-foreground mb-2">
+                              <span>⏱ Time: {r.time_complexity || "N/A"}</span>
+                              <span>💾 Space: {r.space_complexity || "N/A"}</span>
+                              <span>⭐ Code Quality: {r.code_quality}/10</span>
+                            </div>
+                            {candidateCode && (
+                              <details className="mb-2">
+                                <summary className="text-xs font-medium text-foreground cursor-pointer hover:text-primary">View Candidate's Code</summary>
+                                <pre className="mt-2 p-3 rounded-lg bg-muted text-xs overflow-x-auto max-h-48 overflow-y-auto font-mono text-foreground border border-border">
+                                  {candidateCode}
+                                </pre>
+                              </details>
+                            )}
+                            {r.feedback && (
+                              <div className="mt-2 p-2 rounded bg-muted/50 border border-border">
+                                <p className="text-xs font-medium text-foreground mb-1">🤖 AI Feedback:</p>
+                                <p className="text-xs text-muted-foreground">{r.feedback}</p>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* MCQ Results */}
+                {report?.mcq_details?.length > 0 && (
+                  <div>
+                    <h3 className="text-sm font-semibold text-foreground mb-3">📝 MCQ Questions ({report.mcq_correct}/{report.mcq_total} correct)</h3>
+                    <div className="space-y-2 max-h-[400px] overflow-y-auto pr-1">
+                      {report.mcq_details.map((m: any, i: number) => {
+                        const q = mcqQuestions[i];
+                        return (
+                          <div key={i} className={`p-3 rounded-lg border ${m.correct ? "border-primary/30 bg-primary/5" : "border-destructive/30 bg-destructive/5"}`}>
+                            <div className="flex items-start justify-between gap-2 mb-2">
+                              <div className="flex items-center gap-2">
+                                <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${m.correct ? "bg-primary/10 text-primary" : "bg-destructive/10 text-destructive"}`}>
+                                  Q{m.question_number}
+                                </span>
+                                {q?.topic && <span className="text-[10px] text-muted-foreground">{q.topic}</span>}
+                                {q?.difficulty && (
+                                  <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${q.difficulty === "easy" ? "bg-primary/10 text-primary" : q.difficulty === "hard" ? "bg-destructive/10 text-destructive" : "bg-amber-500/10 text-amber-500"}`}>
+                                    {q.difficulty}
+                                  </span>
+                                )}
+                              </div>
+                              <span className={`text-xs font-medium ${m.correct ? "text-primary" : "text-destructive"}`}>
+                                {m.correct ? "✓ Correct" : "✗ Wrong"}
+                              </span>
+                            </div>
+                            {q?.question && <p className="text-sm text-foreground mb-2">{q.question}</p>}
+                            {q?.options && (
+                              <div className="grid grid-cols-2 gap-1.5">
+                                {q.options.map((opt: string, oIdx: number) => {
+                                  const optLetter = String.fromCharCode(65 + oIdx);
+                                  const isSelected = m.selected_option === optLetter;
+                                  const isCorrectOpt = m.correct_answer === optLetter;
+                                  let optClass = "border-border text-muted-foreground";
+                                  if (isCorrectOpt) optClass = "border-primary bg-primary/10 text-primary";
+                                  if (isSelected && !m.correct) optClass = "border-destructive bg-destructive/10 text-destructive";
+                                  if (isSelected && m.correct) optClass = "border-primary bg-primary/10 text-primary";
+                                  return (
+                                    <div key={oIdx} className={`text-xs px-2 py-1.5 rounded border ${optClass}`}>
+                                      <span className="font-bold mr-1">{optLetter}.</span>
+                                      {opt}
+                                      {isSelected && <span className="ml-1">👈</span>}
+                                      {isCorrectOpt && !isSelected && <span className="ml-1">✓</span>}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Action buttons */}
+                <div className="flex gap-2 pt-2">
+                  <Button
+                    onClick={() => {
+                      handleUpdateStage(technicalReportDialog.id, "group_discussion");
+                      setTechnicalReportDialog(null);
+                    }}
+                    className="bg-primary text-primary-foreground"
+                  >
+                    ✅ Move to Group Discussion
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      handleUpdateStage(technicalReportDialog.id, "rejected");
+                      setTechnicalReportDialog(null);
+                    }}
+                    className="text-destructive border-destructive/30"
+                  >
+                    ❌ Reject Candidate
+                  </Button>
+                </div>
+              </div>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
     </motion.div>
   );
 };
