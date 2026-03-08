@@ -782,6 +782,18 @@ const HRCandidatesView = ({ companyId }: Props) => {
                               Move to GD
                             </Button>
                           )}
+                          {canScheduleInterview && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => navigate("/schedule-interview")}
+                              className="text-indigo-500 hover:text-indigo-600 gap-1 text-xs"
+                              title="Schedule HR Interview"
+                            >
+                              <Calendar className="h-3.5 w-3.5" />
+                              Schedule Interview
+                            </Button>
+                          )}
                           {nextStage && app.current_stage !== "rejected" && app.current_stage !== "selected" && (
                             <Button
                               variant="ghost"
