@@ -9,7 +9,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import AddJobPanel from "@/components/AddJobPanel";
 import HRJobsView from "@/components/hr/HRJobsView";
 import HRCandidatesView from "@/components/hr/HRCandidatesView";
-import AptitudeCutoffCard from "@/components/hr/AptitudeCutoffCard";
 import { useToast } from "@/hooks/use-toast";
 
 interface JobRow {
@@ -278,13 +277,6 @@ const HRDashboard = () => {
                 </div>
               )}
             </motion.div>
-
-            {/* Aptitude Cutoff Settings - only for managers */}
-            {userRole === "manager" && companyId && (
-              <div className="mb-6">
-                <AptitudeCutoffCard companyId={companyId} />
-              </div>
-            )}
 
             {/* Recent Jobs Summary */}
             <HRJobsView jobs={jobs.slice(0, 5)} managers={managers} onPostJob={() => setPanelOpen(true)} />

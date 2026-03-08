@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Briefcase, MapPin, DollarSign, Clock, Zap, X } from "lucide-react";
+import { Briefcase, MapPin, DollarSign, Clock, Zap, X, Target } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Slider } from "@/components/ui/slider";
 
 interface AddJobPanelProps {
   open: boolean;
@@ -33,6 +34,7 @@ const AddJobPanel = ({ open, onOpenChange, companyId, hrUserId, managers, onJobC
     experienceMax: "",
     skills: [] as string[],
     description: "",
+    aptitudeCutoff: 60,
   });
 
   const update = (key: string, value: string) => setForm((p) => ({ ...p, [key]: value }));
@@ -70,7 +72,8 @@ const AddJobPanel = ({ open, onOpenChange, companyId, hrUserId, managers, onJobC
       posted_by: hrUserId,
       company_id: companyId,
       status: "open",
-    });
+      aptitude_cutoff: form.aptitudeCutoff,
+    } as any);
 
     if (error) {
       toast({ title: "Failed to post job", description: error.message, variant: "destructive" });
@@ -91,7 +94,7 @@ const AddJobPanel = ({ open, onOpenChange, companyId, hrUserId, managers, onJobC
     setForm({
       title: "", department: "", managerId: "", salaryMin: "", salaryMax: "",
       location: "", workType: "Onsite", experienceMin: "", experienceMax: "",
-      skills: [], description: "",
+      skills: [], description: "", aptitudeCutoff: 60,
     });
     onOpenChange(false);
     onJobCreated();
@@ -215,6 +218,31 @@ const AddJobPanel = ({ open, onOpenChange, companyId, hrUserId, managers, onJobC
               rows={4}
               className={`${simpleInputClass} resize-none`}
             />
+          </div>
+
+          {/* Aptitude Cutoff */}
+          <div className="rounded-lg border border-border bg-secondary/30 p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <Target className="h-4 w-4 text-primary" />
+              <label className="text-sm font-medium text-foreground">Aptitude Cutoff Score</label>
+              <span className="ml-auto text-lg font-bold text-primary">{form.aptitudeCutoff}%</span>
+            </div>
+            <Slider
+              value={[form.aptitudeCutoff]}
+              onValueChange={(val) => setForm((p) => ({ ...p, aptitudeCutoff: val[0] }))}
+              min={0}
+              max={100}
+              step={5}
+              className="mb-2"
+            />
+            <div className="flex justify-between text-[10px] text-muted-foreground">
+              <span>0%</span>
+              <span>50%</span>
+              <span>100%</span>
+            </div>
+            <p className="text-[11px] text-muted-foreground mt-2">
+              Candidates scoring ≥ {form.aptitudeCutoff}% will auto-advance to Video Round
+            </p>
           </div>
 
           <Button
