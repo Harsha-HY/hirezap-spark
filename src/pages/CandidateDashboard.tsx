@@ -86,6 +86,24 @@ const CandidateDashboard = () => {
 
   const getStageIndex = (stage: string) => stages.findIndex((s) => s.key === stage);
 
+  const handleSidebarClick = (label: string) => {
+    setActiveSidebar(label);
+    if (label === "My Applications") document.getElementById("my-applications")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    if (label === "Messages") document.getElementById("messages")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    if (label === "Dashboard") document.getElementById("dashboard-top")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  const viewResume = async (resumeRef: string | null | undefined) => {
+    if (!resumeRef) return;
+    if (resumeRef.startsWith("http")) {
+      window.open(resumeRef, "_blank", "noopener,noreferrer");
+      return;
+    }
+    const { data, error } = await supabase.storage.from("resumes").createSignedUrl(resumeRef, 60);
+    if (error || !data?.signedUrl) return;
+    window.open(data.signedUrl, "_blank", "noopener,noreferrer");
+  };
+
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
