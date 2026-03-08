@@ -185,7 +185,7 @@ const CandidateDashboard = () => {
 
         <main className="flex-1 overflow-y-auto p-6 space-y-8">
           {/* Welcome */}
-          <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
+          <motion.div id="dashboard-top" initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
             <h3 className="text-2xl font-bold text-foreground">
               Welcome back, <span className="text-primary">{user?.full_name?.split(" ")[0]}</span>
             </h3>
