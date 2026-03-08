@@ -371,6 +371,11 @@ const CandidateDashboard = () => {
               </div>
             )}
           </motion.div>
+
+          <motion.div id="settings" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="rounded-2xl border border-border bg-card p-6">
+            <h4 className="text-lg font-bold text-foreground mb-2">Settings</h4>
+            <p className="text-sm text-muted-foreground">Profile and notification settings will appear here.</p>
+          </motion.div>
         </main>
       </div>
     </div>

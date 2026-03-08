@@ -421,6 +421,36 @@ const HRDashboard = () => {
               </TableBody>
             </Table>
           </motion.div>
+
+          <div id="candidates-section" className="rounded-xl border border-border bg-card p-6 mt-6">
+            <h2 className="text-lg font-semibold text-foreground">Candidates</h2>
+            <p className="text-sm text-muted-foreground mt-2">Candidates list module will be shown here.</p>
+          </div>
+
+          <div id="interviews-section" className="rounded-xl border border-border bg-card p-6 mt-6">
+            <h2 className="text-lg font-semibold text-foreground">Interviews</h2>
+            <p className="text-sm text-muted-foreground mt-2">Interview scheduling module will be shown here.</p>
+          </div>
+
+          <div id="group-discussion-section" className="rounded-xl border border-border bg-card p-6 mt-6">
+            <h2 className="text-lg font-semibold text-foreground">Group Discussion</h2>
+            <p className="text-sm text-muted-foreground mt-2">Group discussion rounds will be shown here.</p>
+          </div>
+
+          <div id="messages-section" className="rounded-xl border border-border bg-card p-6 mt-6">
+            <h2 className="text-lg font-semibold text-foreground">Messages</h2>
+            <p className="text-sm text-muted-foreground mt-2">Messaging center will be shown here.</p>
+          </div>
+
+          <div id="analytics-section" className="rounded-xl border border-border bg-card p-6 mt-6">
+            <h2 className="text-lg font-semibold text-foreground">Analytics</h2>
+            <p className="text-sm text-muted-foreground mt-2">Recruitment analytics will be shown here.</p>
+          </div>
+
+          <div id="settings-section" className="rounded-xl border border-border bg-card p-6 mt-6">
+            <h2 className="text-lg font-semibold text-foreground">Settings</h2>
+            <p className="text-sm text-muted-foreground mt-2">HR settings will be shown here.</p>
+          </div>
         </main>
       </div>
 

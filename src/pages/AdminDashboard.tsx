@@ -187,7 +187,7 @@ const AdminDashboard = () => {
           </div>
         </header>
 
-        <main className="flex-1 p-8">
+        <main id="admin-dashboard-top" className="flex-1 p-8">
           {/* Stat Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
             {stats.map(({ icon: Icon, label, value, color }, i) => (
