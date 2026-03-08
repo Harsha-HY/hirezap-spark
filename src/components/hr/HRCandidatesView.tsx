@@ -1166,7 +1166,7 @@ const HRCandidatesView = ({ companyId }: Props) => {
                 );
               })()}
 
-              {!videoDialog.video_analysis && !analyzingVideo && (
+              {(!videoDialog.video_analysis || videoDialog.video_analysis?.status === "failed") && !analyzingVideo && (
                 <Button variant="outline" onClick={handleRetryVideoAnalysis} disabled={analyzingVideo}>
                   🤖 Analyze with AI
                 </Button>
