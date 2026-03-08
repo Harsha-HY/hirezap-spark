@@ -203,6 +203,8 @@ Return ONLY valid JSON with these exact fields:
       .update({ video_score: analysis.overall_score, video_analysis: analysis })
       .eq("id", application.id);
 
+
+
     console.log("Video analysis complete for application:", application.id);
   } catch (err) {
     console.error("Background video analysis failed:", err);

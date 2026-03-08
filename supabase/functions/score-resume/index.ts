@@ -214,6 +214,8 @@ Return ONLY a valid JSON response with these exact fields:
       throw new Error("Failed to save score: " + updateErr.message);
     }
 
+
+
     // Find HR who posted the job to notify them
     const { data: hrUser } = await supabase
       .from("users")
