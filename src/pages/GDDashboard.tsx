@@ -60,6 +60,7 @@ const GDDashboard = () => {
   const [panelOpen, setPanelOpen] = useState(false);
   const [scoresDialog, setScoresDialog] = useState<GD | null>(null);
   const [updatingStage, setUpdatingStage] = useState<string | null>(null);
+  const [analyzingGD, setAnalyzingGD] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
     const { data: { session } } = await supabase.auth.getSession();
