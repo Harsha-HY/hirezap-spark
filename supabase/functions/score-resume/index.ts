@@ -203,7 +203,7 @@ Return ONLY a valid JSON response with these exact fields:
       .eq("id", job.posted_by)
       .maybeSingle();
 
-    const candidateName = (application as any).candidate?.full_name || "A candidate";
+    const candidateName = candidate?.full_name || "A candidate";
 
     if (hrUser) {
       await supabase.from("notifications").insert({
