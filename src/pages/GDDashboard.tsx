@@ -355,10 +355,15 @@ const GDDashboard = () => {
                             {analyzingGD === gd.id ? (
                               <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Analyzing...</>
                             ) : (
-                              <><Brain className="h-3.5 w-3.5" /> Complete & Analyze</>
+                              <><Brain className="h-3.5 w-3.5" /> Complete &amp; Analyze</>
                             )}
                           </Button>
                         </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
             </div>
           )}
         </motion.div>
