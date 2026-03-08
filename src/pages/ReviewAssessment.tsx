@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
-import { ArrowLeft, Check, Pencil, RefreshCw, Trash2, Plus, Loader2 } from "lucide-react";
+import { ArrowLeft, Check, Pencil, RefreshCw, Trash2, Plus, Loader2, Upload, FileUp } from "lucide-react";
 
 interface Question {
   question_number: number;
