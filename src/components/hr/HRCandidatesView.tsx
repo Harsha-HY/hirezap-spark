@@ -819,6 +819,18 @@ const HRCandidatesView = ({ companyId }: Props) => {
                 {bulkGeneratingTechnical ? "Generating..." : `Generate Technical for All (${technicalEligibleApps.length})`}
               </Button>
             )}
+            {gdEligibleApps.length > 0 && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleBulkMoveToGD}
+                disabled={bulkMovingToGD}
+                className="gap-2 text-xs"
+              >
+                {bulkMovingToGD ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Users className="h-3.5 w-3.5" />}
+                {bulkMovingToGD ? "Moving..." : `Move All to GD (${gdEligibleApps.length})`}
+              </Button>
+            )}
             {testCompletedApps.length > 0 && currentUserRole === "manager" && (
               <Button
                 size="sm"
