@@ -24,6 +24,7 @@ const AptitudeTest = () => {
   // Auth & access
   const [loading, setLoading] = useState(true);
   const [authorized, setAuthorized] = useState(false);
+  const [accessMessage, setAccessMessage] = useState("The aptitude test is not available for you yet. You will receive a notification when HR opens the test for your profile.");
   const [application, setApplication] = useState<any>(null);
   const [candidateId, setCandidateId] = useState("");
   const [questions, setQuestions] = useState<TestQuestion[]>([]);

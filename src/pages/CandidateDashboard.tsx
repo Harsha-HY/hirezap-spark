@@ -39,6 +39,7 @@ interface Application {
 const CandidateDashboard = () => {
   const [user, setUser] = useState<any>(null);
   const [applications, setApplications] = useState<Application[]>([]);
+  const [submittedTestAppIds, setSubmittedTestAppIds] = useState<Set<string>>(new Set());
   const [notifications, setNotifications] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeSidebar, setActiveSidebar] = useState("Dashboard");
