@@ -633,6 +633,7 @@ const HRCandidatesView = ({ companyId }: Props) => {
                   const canOpenTechnical = app.current_stage === "video_submitted";
                   const canViewTechReport = app.technical_score !== null || app.current_stage === "technical_completed";
                   const canMoveToGD = app.current_stage === "technical_completed";
+                  const canScheduleInterview = app.current_stage === "gd_completed" || app.current_stage === "interview" || app.current_stage === "hr_interview";
 
                   return (
                     <TableRow key={app.id}>
