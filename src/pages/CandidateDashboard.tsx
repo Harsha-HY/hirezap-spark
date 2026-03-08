@@ -286,6 +286,7 @@ const CandidateDashboard = () => {
                       <th className="text-left py-3 px-3 font-medium">Company</th>
                       <th className="text-left py-3 px-3 font-medium">Stage</th>
                       <th className="text-left py-3 px-3 font-medium">Status</th>
+                      <th className="text-left py-3 px-3 font-medium">Resume</th>
                       <th className="text-left py-3 px-3 font-medium">Applied</th>
                     </tr>
                   </thead>
