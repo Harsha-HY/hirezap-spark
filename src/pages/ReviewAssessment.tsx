@@ -34,6 +34,7 @@ const ReviewAssessment = () => {
   const { assessmentId } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [userRole, setUserRole] = useState<string>("hr");
 
   const [loading, setLoading] = useState(true);
   const [assessment, setAssessment] = useState<any>(null);
