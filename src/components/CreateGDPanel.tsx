@@ -177,13 +177,18 @@ const CreateGDPanel = ({ open, onOpenChange, companyId, userId, userName, userRo
 
       // Notify candidates
       const selectedApps = candidates.filter(c => selectedCandidates.includes(c.id));
-      for (const app of selectedApps) {
+      const candidateNotifications = selectedApps.map((app) => {
         const groupName = groups.find(g => g.members.some(m => m.id === app.id))?.name || "?";
-        await supabase.from("notifications").insert({
+        return {
           user_id: app.candidate_id,
-          title: "🎉 GD Round Scheduled!",
-          message: `You are selected for Group Discussion. Topic: ${topic}. Date: ${scheduledDate}, Time: ${scheduledTime}, Duration: ${duration} min. Group: ${groupName}.${meetingLink ? ` Join here: ${meetingLink}` : ""} ${instructions ? `Instructions: ${instructions}` : ""} Be ready with good internet, camera, mic, and quiet environment.`,
-        });
+          title: "🎉 You are selected for group discussion",
+          message: `You are selected for group discussion. Topic: ${topic}. Date: ${scheduledDate}, Time: ${scheduledTime}, Duration: ${duration} min. Group: ${groupName}.${meetingLink ? ` Join here: ${meetingLink}` : ""} ${instructions ? `Instructions: ${instructions}` : ""}`,
+        };
+      });
+
+      if (candidateNotifications.length > 0) {
+        const { error: notifyError } = await supabase.from("notifications").insert(candidateNotifications as any);
+        if (notifyError) throw notifyError;
       }
 
       // If Manager created, notify HR
