@@ -15,6 +15,8 @@ import CandidateDashboard from "./pages/CandidateDashboard";
 import AptitudeTest from "./pages/AptitudeTest";
 import VideoIntro from "./pages/VideoIntro";
 import ReviewAssessment from "./pages/ReviewAssessment";
+import ReviewTechnical from "./pages/ReviewTechnical";
+import TechnicalTest from "./pages/TechnicalTest";
 import NotFound from "./pages/NotFound";
 import ProtectedRoute from "./components/ProtectedRoute";
 
