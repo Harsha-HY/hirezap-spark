@@ -239,6 +239,8 @@ const CandidateDashboard = () => {
                       : rawStage === "shortlisted" ? "aptitude_test"
                       : rawStage === "video_submitted" ? "technical_round"
                       : rawStage === "technical_round" ? "technical_round"
+                      : rawStage === "technical_test" ? "technical_round"
+                      : rawStage === "technical_completed" ? "group_discussion"
                       : rawStage === "interview" ? "hr_interview"
                       : rawStage === "selected" ? "offer_letter"
                       : rawStage;
@@ -293,6 +295,15 @@ const CandidateDashboard = () => {
                               className="bg-primary text-primary-foreground h-7 px-3 text-xs"
                             >
                               🎥 Record Video
+                            </Button>
+                          )}
+                          {isCurrent && stage.key === "technical_round" && rawStage === "technical_test" && (
+                            <Button
+                              size="sm"
+                              onClick={() => navigate("/technical-test")}
+                              className="bg-primary text-primary-foreground h-7 px-3 text-xs"
+                            >
+                              💻 Take Technical Test
                             </Button>
                           )}
                         </div>

@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { FileText, ArrowRight, XCircle, BookOpen, Eye, Loader2, Video, Play } from "lucide-react";
+import { FileText, ArrowRight, XCircle, BookOpen, Eye, Loader2, Video, Play, Code2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -31,7 +31,7 @@ interface Props {
   companyId: string;
 }
 
-const stageFlow = ["applied", "ai_scored", "shortlisted", "aptitude_test", "test_completed", "video_intro", "video_submitted", "technical_round", "group_discussion", "interview", "selected", "rejected"];
+const stageFlow = ["applied", "ai_scored", "shortlisted", "aptitude_test", "test_completed", "video_intro", "video_submitted", "technical_round", "technical_test", "technical_completed", "group_discussion", "interview", "selected", "rejected"];
 
 const stageLabel: Record<string, string> = {
   applied: "Applied",
@@ -42,6 +42,8 @@ const stageLabel: Record<string, string> = {
   video_intro: "Video Intro",
   video_submitted: "Video Done",
   technical_round: "Technical Round",
+  technical_test: "Technical Test",
+  technical_completed: "Technical Done",
   group_discussion: "Group Discussion",
   interview: "HR Interview",
   selected: "Selected",
@@ -57,6 +59,8 @@ const stageBadgeClass: Record<string, string> = {
   video_intro: "bg-pink-500/10 text-pink-500",
   video_submitted: "bg-emerald-500/10 text-emerald-500",
   technical_round: "bg-orange-500/10 text-orange-500",
+  technical_test: "bg-orange-500/10 text-orange-500",
+  technical_completed: "bg-teal-500/10 text-teal-500",
   group_discussion: "bg-cyan-500/10 text-cyan-500",
   interview: "bg-indigo-500/10 text-indigo-500",
   selected: "bg-primary/10 text-primary",
@@ -76,6 +80,7 @@ const HRCandidatesView = ({ companyId }: Props) => {
   const [testSections, setTestSections] = useState<any[]>([]);
   const [candidatePhotoUrl, setCandidatePhotoUrl] = useState<string | null>(null);
   const [generatingTestFor, setGeneratingTestFor] = useState<string | null>(null);
+  const [generatingTechnicalFor, setGeneratingTechnicalFor] = useState<string | null>(null);
   const [videoDialog, setVideoDialog] = useState<any>(null);
   const [videoSignedUrl, setVideoSignedUrl] = useState<string | null>(null);
   const [currentUserRole, setCurrentUserRole] = useState<string>("hr");
@@ -354,6 +359,52 @@ const HRCandidatesView = ({ companyId }: Props) => {
     }
   };
 
+  const handleOpenTechnicalRound = async (app: Application & { candidate_name: string; job_title: string }) => {
+    setGeneratingTechnicalFor(app.id);
+    toast({
+      title: "🤖 Generating Technical Questions...",
+      description: "AI is creating DSA, coding, and MCQ questions based on the candidate's resume. Please wait.",
+    });
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      const { data: currentUser } = await supabase
+        .from("users")
+        .select("id")
+        .eq("user_id", session.user.id)
+        .maybeSingle();
+
+      const { data, error } = await supabase.functions.invoke("generate-technical", {
+        body: {
+          jobId: app.job_id,
+          applicationId: app.id,
+          companyId,
+          createdBy: currentUser?.id,
+        },
+      });
+
+      if (error) throw error;
+
+      if (data?.assessmentId) {
+        // Update stage to technical_round (pending approval)
+        await supabase.from("applications").update({ current_stage: "technical_round" }).eq("id", app.id);
+        toast({
+          title: "🤖 Technical questions generated!",
+          description: "Both HR and Manager must review and approve before sending to candidate.",
+        });
+        await notifyHROfManagerAction(
+          "💻 Technical Round Opened",
+          `${currentUserName} opened technical round for ${app.candidate_name} (${app.job_title}).`
+        );
+        navigate(`/review-technical/${data.assessmentId}`);
+      }
+    } catch (e: any) {
+      toast({ title: "Error", description: e.message || "Failed to generate technical questions", variant: "destructive" });
+    }
+    setGeneratingTechnicalFor(null);
+  };
+
   const getVerdict = (analysis: any): string => {
     if (!analysis) return "—";
     if (typeof analysis === "object" && analysis.verdict) return analysis.verdict;
@@ -365,7 +416,7 @@ const HRCandidatesView = ({ companyId }: Props) => {
     if (idx === -1 || idx >= stageFlow.length - 2) return null;
     const next = stageFlow[idx + 1];
     // These stages are handled by specific buttons, not generic "next"
-    if (["aptitude_test", "test_completed", "video_intro", "video_submitted"].includes(next)) return null;
+    if (["aptitude_test", "test_completed", "video_intro", "video_submitted", "technical_round", "technical_test"].includes(next)) return null;
     return next;
   };
 
@@ -411,6 +462,7 @@ const HRCandidatesView = ({ companyId }: Props) => {
                   const canViewResults = app.current_stage === "test_completed" || app.test_score !== null;
                   const canOpenVideo = app.current_stage === "test_completed";
                   const canViewVideo = (app as any).video_url || app.current_stage === "video_submitted";
+                  const canOpenTechnical = app.current_stage === "video_submitted";
 
                   return (
                     <TableRow key={app.id}>
@@ -509,6 +561,23 @@ const HRCandidatesView = ({ companyId }: Props) => {
                             >
                               <Play className="h-3.5 w-3.5" />
                               Watch
+                            </Button>
+                          )}
+                          {canOpenTechnical && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleOpenTechnicalRound(app)}
+                              disabled={generatingTechnicalFor === app.id}
+                              className="text-orange-500 hover:text-orange-600 gap-1 text-xs"
+                              title="Open Technical Round"
+                            >
+                              {generatingTechnicalFor === app.id ? (
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              ) : (
+                                <Code2 className="h-3.5 w-3.5" />
+                              )}
+                              {generatingTechnicalFor === app.id ? "Generating..." : "Technical"}
                             </Button>
                           )}
                           {nextStage && app.current_stage !== "rejected" && app.current_stage !== "selected" && (
