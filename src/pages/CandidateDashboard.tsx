@@ -121,6 +121,18 @@ const CandidateDashboard = () => {
       .order("scheduled_date", { ascending: false });
     if (interviewData) setInterviews(interviewData as any);
 
+    // Fetch GD info for candidate
+    if (apps?.length) {
+      const jobIds = [...new Set(apps.map((a: any) => a.job_id))];
+      const { data: gdGroups } = await supabase.from("gd_groups").select("*, group_discussions(*)");
+      if (gdGroups) {
+        const myGroup = (gdGroups as any[]).find(g => g.candidate_ids?.includes(userData.id));
+        if (myGroup?.group_discussions) {
+          setGdInfo({ ...myGroup.group_discussions, group_name: myGroup.group_name });
+        }
+      }
+    }
+
     const { data: bgvData } = await supabase
       .from("bgv_documents")
       .select("*")
