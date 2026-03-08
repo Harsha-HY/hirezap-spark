@@ -123,21 +123,30 @@ const HRCandidatesView = ({ companyId }: Props) => {
       return;
     }
 
-    // If it's already a full URL (legacy data), open directly
-    if (url.startsWith("http://") || url.startsWith("https://")) {
-      setResumeUrl(url);
-      setResumeDialogOpen(true);
-      return;
+    let storagePath = url;
+
+    // If it's a full Supabase URL, extract the storage path
+    if (url.startsWith("http")) {
+      const marker = "/object/public/resumes/";
+      const markerAlt = "/object/sign/resumes/";
+      let idx = url.indexOf(marker);
+      if (idx !== -1) {
+        storagePath = decodeURIComponent(url.substring(idx + marker.length));
+      } else {
+        idx = url.indexOf(markerAlt);
+        if (idx !== -1) {
+          storagePath = decodeURIComponent(url.substring(idx + markerAlt.length));
+        }
+      }
     }
 
-    // Otherwise it's a storage path — generate signed URL
-    const { data, error } = await supabase.storage.from("resumes").createSignedUrl(url, 3600);
+    const { data, error } = await supabase.storage.from("resumes").createSignedUrl(storagePath, 3600);
     if (data?.signedUrl) {
       setResumeUrl(data.signedUrl);
       setResumeDialogOpen(true);
     } else {
-      console.error("Signed URL error:", error);
-      toast({ title: "Error", description: "Could not load resume.", variant: "destructive" });
+      console.error("Signed URL error:", error, "path:", storagePath);
+      toast({ title: "Error", description: "Could not load resume. The file may not exist.", variant: "destructive" });
     }
   };
 
