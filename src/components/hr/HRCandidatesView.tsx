@@ -622,7 +622,7 @@ const HRCandidatesView = ({ companyId }: Props) => {
     (a) => a.current_stage === "technical_completed"
   );
 
-  const [bulkMovingToGD, setBulkMovingToGD] = useState(false);
+
 
   const handleBulkMoveToGD = async () => {
     if (gdEligibleApps.length === 0) return;
