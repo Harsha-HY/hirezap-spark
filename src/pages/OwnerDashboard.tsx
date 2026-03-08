@@ -76,6 +76,12 @@ const OwnerDashboard = () => {
     navigate("/login");
   };
 
+  const handleNavClick = (label: string) => {
+    setActiveNav(label);
+    if (label === "Companies") document.getElementById("companies-section")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    if (label === "Dashboard") window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
   const stats = [
     { icon: Building2, label: "Total Companies", value: companies.length, color: "text-primary" },
     { icon: UserCheck, label: "Total Super Admins", value: Object.keys(adminMap).length, color: "text-blue-400" },
