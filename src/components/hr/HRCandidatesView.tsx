@@ -642,6 +642,13 @@ const HRCandidatesView = ({ companyId }: Props) => {
                         ) : "—"}
                       </TableCell>
                       <TableCell>
+                        {app.technical_score !== null ? (
+                          <span className={`font-bold ${app.technical_score >= 70 ? "text-primary" : app.technical_score >= 50 ? "text-amber-500" : "text-destructive"}`}>
+                            {app.technical_score}
+                          </span>
+                        ) : "—"}
+                      </TableCell>
+                      <TableCell>
                         <span className={`rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap ${stageBadgeClass[app.current_stage] || "bg-muted text-muted-foreground"}`}>
                           {stageLabel[app.current_stage] || app.current_stage}
                         </span>
