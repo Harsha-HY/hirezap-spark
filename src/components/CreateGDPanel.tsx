@@ -370,6 +370,18 @@ const CreateGDPanel = ({ open, onOpenChange, companyId, userId, userName, userRo
             </Select>
           </div>
 
+          {/* Meeting Link */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-foreground">Meeting Link (Google Meet / Zoom)</label>
+            <Input
+              value={meetingLink}
+              onChange={(e) => setMeetingLink(e.target.value)}
+              placeholder="https://meet.google.com/abc-defg-hij"
+              className="bg-secondary border-border"
+            />
+            <p className="text-xs text-muted-foreground">Paste your Google Meet or Zoom link. Candidates will see this link to join the GD.</p>
+          </div>
+
           {/* Instructions */}
           <div className="space-y-2">
             <label className="text-sm font-medium text-foreground">Special Instructions (optional)</label>
