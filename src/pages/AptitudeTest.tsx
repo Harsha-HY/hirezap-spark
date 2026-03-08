@@ -535,7 +535,7 @@ const AptitudeTest = () => {
         <div className="mt-8 p-4 rounded-xl border border-border bg-card">
           <p className="text-xs text-muted-foreground mb-3">Question Navigator</p>
           <div className="grid grid-cols-10 gap-2">
-            {Array.from({ length: 40 }, (_, i) => (
+            {Array.from({ length: totalQ }, (_, i) => (
               <button
                 key={i}
                 onClick={() => goToQuestion(i)}
