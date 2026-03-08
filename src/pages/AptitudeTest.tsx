@@ -455,7 +455,7 @@ const AptitudeTest = () => {
         <Shield className="h-16 w-16 text-muted-foreground mb-4" />
         <h1 className="text-2xl font-bold text-foreground mb-2">Test Not Available</h1>
         <p className="text-muted-foreground text-center max-w-md">
-          The aptitude test is not available for you yet. You will receive a notification when HR opens the test for your profile.
+          {accessMessage}
         </p>
         <Button onClick={() => navigate("/candidate-dashboard")} variant="outline" className="mt-6">
           Back to Dashboard
