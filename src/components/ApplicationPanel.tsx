@@ -209,7 +209,7 @@ const ApplicationPanel = ({ open, onOpenChange, job, onSuccess }: ApplicationPan
 
           {/* Resume upload */}
           <div>
-            <label className="block text-sm text-muted-foreground mb-1.5">Resume (PDF, max 5MB)</label>
+            <label className="block text-sm text-muted-foreground mb-1.5">Resume (PDF, DOC, DOCX, JPG, PNG — max 5MB)</label>
             <label className="flex items-center gap-3 cursor-pointer rounded-xl border border-dashed border-border bg-card/40 p-4 hover:border-primary/50 transition-colors">
               <FileText className="h-5 w-5 text-muted-foreground" />
               <span className="text-sm text-muted-foreground">
@@ -217,7 +217,7 @@ const ApplicationPanel = ({ open, onOpenChange, job, onSuccess }: ApplicationPan
               </span>
               <input
                 type="file"
-                accept=".pdf"
+                accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp"
                 className="hidden"
                 onChange={(e) => {
                   const file = e.target.files?.[0];
@@ -225,9 +225,18 @@ const ApplicationPanel = ({ open, onOpenChange, job, onSuccess }: ApplicationPan
                     setResumeFile(null);
                     return;
                   }
-                  const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
-                  if (!isPdf) {
-                    toast({ title: "Invalid file type", description: "Only PDF resumes are allowed", variant: "destructive" });
+                  const allowed = [
+                    "application/pdf",
+                    "application/msword",
+                    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                    "image/jpeg",
+                    "image/png",
+                    "image/webp",
+                  ];
+                  const ext = file.name.toLowerCase().split(".").pop();
+                  const allowedExts = ["pdf", "doc", "docx", "jpg", "jpeg", "png", "webp"];
+                  if (!allowed.includes(file.type) && !allowedExts.includes(ext || "")) {
+                    toast({ title: "Invalid file type", description: "Allowed: PDF, DOC, DOCX, JPG, PNG", variant: "destructive" });
                     e.currentTarget.value = "";
                     return;
                   }
