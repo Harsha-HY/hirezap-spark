@@ -240,6 +240,34 @@ const HRCandidatesView = ({ companyId }: Props) => {
     }
   };
 
+  const handleViewCandidateDetails = async (app: any) => {
+    setDetailsDialog(app);
+    setDetailsPhotoUrl(null);
+    setDetailsResumeUrl(null);
+
+    // Get photo URL
+    if (app.photo_url) {
+      if (app.photo_url.startsWith("http")) {
+        setDetailsPhotoUrl(app.photo_url);
+      } else {
+        const { data: photoData } = supabase.storage.from("photos").getPublicUrl(app.photo_url);
+        if (photoData?.publicUrl) setDetailsPhotoUrl(photoData.publicUrl);
+      }
+    }
+
+    // Get resume signed URL
+    if (app.resume_url) {
+      let storagePath = app.resume_url;
+      if (storagePath.startsWith("http")) {
+        const marker = "/object/public/resumes/";
+        const idx = storagePath.indexOf(marker);
+        if (idx !== -1) storagePath = decodeURIComponent(storagePath.substring(idx + marker.length));
+      }
+      const { data } = await supabase.storage.from("resumes").createSignedUrl(storagePath, 3600);
+      if (data?.signedUrl) setDetailsResumeUrl(data.signedUrl);
+    }
+  };
+
   const handleUpdateStage = async (appId: string, newStage: string) => {
     // Optimistic update — instant UI change
     const appData = applications.find((a) => a.id === appId);
@@ -261,6 +289,31 @@ const HRCandidatesView = ({ companyId }: Props) => {
       toast({ title: "Error", description: error.message, variant: "destructive" });
       fetchApplications(); // revert on error
       return;
+    }
+
+    // Send notification to candidate when hired
+    if (newStage === "hired" && appData) {
+      await supabase.from("notifications").insert({
+        user_id: appData.candidate_id,
+        title: "🎉 Congratulations! You are Hired!",
+        message: `We are thrilled to inform you that you have been selected for the position of ${appData.job_title}. Please check your email for the official offer letter and next steps. Welcome aboard!`,
+      });
+
+      // Trigger hire email edge function
+      supabase.functions.invoke("send-hire-email", {
+        body: { applicationId: appId, candidateId: appData.candidate_id },
+      }).then((res) => {
+        if (res.error) console.error("Hire email error:", res.error);
+      });
+    }
+
+    // Send "Better luck next time" when rejected
+    if (newStage === "rejected" && appData) {
+      await supabase.from("notifications").insert({
+        user_id: appData.candidate_id,
+        title: "Better Luck Next Time 🍀",
+        message: `Thank you for applying for ${appData.job_title}. Unfortunately, we have decided to move forward with other candidates. We wish you all the best in your future endeavors.`,
+      });
     }
 
     await notifyHROfManagerAction(
