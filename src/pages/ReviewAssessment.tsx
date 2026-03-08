@@ -90,7 +90,7 @@ const ReviewAssessment = () => {
 
     if (error || !data) {
       toast({ title: "Error", description: "Assessment not found", variant: "destructive" });
-      navigate("/hr-dashboard");
+      navigate(userRole === "manager" ? "/manager-dashboard" : "/hr-dashboard");
       return;
     }
 
