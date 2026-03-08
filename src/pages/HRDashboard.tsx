@@ -45,6 +45,11 @@ const HRDashboard = () => {
   const [jobs, setJobs] = useState<JobRow[]>([]);
   const [managers, setManagers] = useState<{ id: string; full_name: string }[]>([]);
   const [panelOpen, setPanelOpen] = useState(false);
+  const [notifications, setNotifications] = useState<{ id: string; title: string; message: string; created_at: string; read: boolean }[]>([]);
+  const [showNotifPopup, setShowNotifPopup] = useState(false);
+  const [latestNotif, setLatestNotif] = useState<{ title: string; message: string } | null>(null);
+  const [liveActivities, setLiveActivities] = useState<{ message: string; time: string }[]>([]);
+  const { toast } = useToast();
 
   const fetchData = async () => {
     const { data: { session } } = await supabase.auth.getSession();
