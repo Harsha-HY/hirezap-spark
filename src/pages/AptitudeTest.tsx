@@ -512,7 +512,7 @@ const AptitudeTest = () => {
           </Button>
 
           <div className="flex items-center gap-2">
-            {currentQ < 39 ? (
+            {currentQ < totalQ - 1 ? (
               <Button
                 onClick={() => goToQuestion(currentQ + 1)}
                 className="bg-primary text-primary-foreground"
