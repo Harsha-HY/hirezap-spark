@@ -31,7 +31,7 @@ interface Props {
   companyId: string;
 }
 
-const stageFlow = ["applied", "ai_scored", "shortlisted", "aptitude_test", "test_completed", "video_intro", "video_submitted", "interview", "selected", "rejected"];
+const stageFlow = ["applied", "ai_scored", "shortlisted", "aptitude_test", "test_completed", "video_intro", "video_submitted", "technical_round", "group_discussion", "interview", "selected", "rejected"];
 
 const stageLabel: Record<string, string> = {
   applied: "Applied",

@@ -13,8 +13,8 @@ const stages = [
   { key: "resume_review", label: "Resume Review", icon: "⏳" },
   { key: "aptitude_test", label: "Aptitude Test", icon: "🔒" },
   { key: "video_intro", label: "Video Introduction", icon: "🔒" },
-  { key: "group_discussion", label: "Group Discussion", icon: "🔒" },
   { key: "technical_round", label: "Technical Round", icon: "🔒" },
+  { key: "group_discussion", label: "Group Discussion", icon: "🔒" },
   { key: "hr_interview", label: "HR Interview", icon: "🔒" },
   { key: "offer_letter", label: "Offer Letter", icon: "🔒" },
 ];
