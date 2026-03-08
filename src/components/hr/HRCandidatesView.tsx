@@ -520,7 +520,7 @@ const HRCandidatesView = ({ companyId }: Props) => {
     if (idx === -1 || idx >= stageFlow.length - 2) return null;
     const next = stageFlow[idx + 1];
     // These stages are handled by specific buttons, not generic "next"
-    if (["aptitude_test", "test_completed", "video_intro", "video_submitted", "technical_round", "technical_test", "technical_completed", "group_discussion", "gd_completed"].includes(next)) return null;
+    if (["aptitude_test", "test_completed", "video_intro", "video_submitted", "technical_round", "technical_test", "technical_completed", "group_discussion", "gd_completed", "hr_interview", "interview", "offer_sent", "hired", "bgv", "onboarded"].includes(next)) return null;
     return next;
   };
 
