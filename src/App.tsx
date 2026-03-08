@@ -11,6 +11,7 @@ import OwnerDashboard from "./pages/OwnerDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
 import HRDashboard from "./pages/HRDashboard";
 import CandidateDashboard from "./pages/CandidateDashboard";
+import AptitudeTest from "./pages/AptitudeTest";
 import NotFound from "./pages/NotFound";
 import ProtectedRoute from "./components/ProtectedRoute";
 
