@@ -60,7 +60,7 @@ const HRDashboard = () => {
 
     const { data: user } = await supabase
       .from("users")
-      .select("id, full_name, company_id")
+      .select("id, full_name, company_id, role")
       .eq("user_id", session.user.id)
       .maybeSingle();
 
@@ -68,6 +68,9 @@ const HRDashboard = () => {
 
     setHrName(user.full_name);
     setHrUserId(user.id);
+    if (user.role === "manager" || user.role === "hr") {
+      setUserRole(user.role as "hr" | "manager");
+    }
 
     if (user.company_id) {
       setCompanyId(user.company_id);
