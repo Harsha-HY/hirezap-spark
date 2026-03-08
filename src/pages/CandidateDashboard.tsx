@@ -383,17 +383,23 @@ const CandidateDashboard = () => {
                                   📅 {gdInfo.scheduled_date} at {gdInfo.scheduled_time} • Group {gdInfo.group_name}
                                 </span>
                                 <span className="text-xs text-muted-foreground">Topic: {gdInfo.topic}</span>
+                                <span className="text-xs text-primary font-medium">You are selected for group discussion.</span>
                               </div>
 
-                              {gdInfo.meeting_link && (
-                                <Button
-                                  size="sm"
-                                  onClick={() => window.open(normalizeMeetingLink(gdInfo.meeting_link), "_blank", "noopener,noreferrer")}
-                                  className="bg-primary text-primary-foreground h-7 px-3 text-xs gap-1 shrink-0"
-                                >
-                                  <ExternalLink className="h-3 w-3" /> Join GD Call
-                                </Button>
-                              )}
+                              <div className="rounded-lg border border-border bg-card p-2.5 min-w-[180px]">
+                                <p className="text-[11px] text-muted-foreground mb-2">Join this for group discussion</p>
+                                {gdInfo.meeting_link ? (
+                                  <Button
+                                    size="sm"
+                                    onClick={() => window.open(normalizeMeetingLink(gdInfo.meeting_link), "_blank", "noopener,noreferrer")}
+                                    className="w-full bg-primary text-primary-foreground h-7 px-3 text-xs gap-1"
+                                  >
+                                    <ExternalLink className="h-3 w-3" /> Join GD Call
+                                  </Button>
+                                ) : (
+                                  <p className="text-[11px] text-muted-foreground">Meeting link will be shared soon.</p>
+                                )}
+                              </div>
                             </div>
                           )}
                         </div>
