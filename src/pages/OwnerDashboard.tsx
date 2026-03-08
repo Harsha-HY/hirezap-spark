@@ -36,6 +36,7 @@ const OwnerDashboard = () => {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [panelOpen, setPanelOpen] = useState(false);
   const [adminMap, setAdminMap] = useState<Record<string, { full_name: string; email: string }>>({});
+  const { toast } = useToast();
 
   const fetchData = async () => {
     const { data: { session } } = await supabase.auth.getSession();
