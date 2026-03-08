@@ -106,6 +106,14 @@ const App = () => (
               </ProtectedRoute>
             }
           />
+          <Route
+            path="/technical-test"
+            element={
+              <ProtectedRoute requiredRole="candidate">
+                <TechnicalTest />
+              </ProtectedRoute>
+            }
+          />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
