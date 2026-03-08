@@ -448,47 +448,197 @@ const HRCandidatesView = ({ companyId }: Props) => {
 
       {/* Test Results Dialog */}
       <Dialog open={!!testResultDialog} onOpenChange={() => setTestResultDialog(null)}>
-        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Test Results — {testResultDialog?.candidate_name}</DialogTitle>
           </DialogHeader>
           {testResultDialog && (
             <div className="space-y-6">
-              <div className="grid grid-cols-3 gap-4">
+              {/* Candidate Info + Photo */}
+              <div className="flex items-start gap-4">
+                {candidatePhotoUrl && (
+                  <div className="shrink-0">
+                    <img
+                      src={candidatePhotoUrl}
+                      alt={testResultDialog.candidate_name}
+                      className="h-20 w-20 rounded-xl object-cover border-2 border-border"
+                    />
+                  </div>
+                )}
+                <div className="flex-1">
+                  <p className="text-lg font-bold text-foreground">{testResultDialog.candidate_name}</p>
+                  <p className="text-sm text-muted-foreground">{testResultDialog.candidate_email}</p>
+                  <p className="text-sm text-muted-foreground">Job: {testResultDialog.job_title}</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Exp: {testResultDialog.experience_years}y • Company: {testResultDialog.current_company}
+                  </p>
+                </div>
+              </div>
+
+              {/* Score Cards */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <div className="rounded-lg border border-border bg-muted/50 p-4 text-center">
                   <p className="text-2xl font-bold text-primary">{testResultDialog.test_score ?? "—"}/100</p>
                   <p className="text-xs text-muted-foreground">Score</p>
                 </div>
                 <div className="rounded-lg border border-border bg-muted/50 p-4 text-center">
-                  <p className="text-2xl font-bold text-foreground">{testAnswers.filter(a => a.selected_option !== null).length}/40</p>
+                  <p className="text-2xl font-bold text-foreground">
+                    {testAnswers.filter(a => a.selected_option !== null).length}/{testQuestions.length || 40}
+                  </p>
                   <p className="text-xs text-muted-foreground">Answered</p>
                 </div>
                 <div className="rounded-lg border border-border bg-muted/50 p-4 text-center">
-                  <p className={`text-2xl font-bold ${testViolations.length > 0 ? "text-destructive" : "text-primary"}`}>{testViolations.length}</p>
+                  <p className="text-2xl font-bold text-foreground">
+                    {testAnswers.length > 0 ? Math.round(testAnswers.reduce((s, a) => s + (a.time_spent_seconds || 0), 0) / 60) : 0}m
+                  </p>
+                  <p className="text-xs text-muted-foreground">Total Time</p>
+                </div>
+                <div className="rounded-lg border border-border bg-muted/50 p-4 text-center">
+                  <p className={`text-2xl font-bold ${testViolations.length > 0 ? "text-destructive" : "text-primary"}`}>
+                    {testViolations.length}
+                  </p>
                   <p className="text-xs text-muted-foreground">Violations</p>
                 </div>
               </div>
 
+              {/* Section-wise Performance */}
+              {testSections.length > 0 && testQuestions.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-semibold text-foreground mb-3">📊 Section-wise Performance</h3>
+                  <div className="space-y-2">
+                    {(() => {
+                      let globalIdx = 0;
+                      return testSections.map((sec: any, sIdx: number) => {
+                        const sectionQuestions = sec.questions || [];
+                        const startIdx = globalIdx;
+                        globalIdx += sectionQuestions.length;
+                        
+                        let correct = 0;
+                        let attempted = 0;
+                        sectionQuestions.forEach((q: any, qIdx: number) => {
+                          const answer = testAnswers.find(a => a.question_index === startIdx + qIdx);
+                          if (answer && answer.selected_option !== null) {
+                            attempted++;
+                            const correctIdx = q.correct_answer ? q.correct_answer.charCodeAt(0) - 65 : -1;
+                            if (answer.selected_option === correctIdx) correct++;
+                          }
+                        });
+                        const pct = sectionQuestions.length > 0 ? Math.round((correct / sectionQuestions.length) * 100) : 0;
+
+                        return (
+                          <div key={sIdx} className="flex items-center gap-3 p-3 rounded-lg border border-border">
+                            <div className="flex-1">
+                              <p className="text-sm font-medium text-foreground">{sec.name}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {correct}/{sectionQuestions.length} correct • {attempted} attempted
+                              </p>
+                            </div>
+                            <div className="w-24 h-2 bg-muted rounded-full overflow-hidden">
+                              <div
+                                className={`h-full rounded-full ${pct >= 70 ? "bg-primary" : pct >= 40 ? "bg-amber-500" : "bg-destructive"}`}
+                                style={{ width: `${pct}%` }}
+                              />
+                            </div>
+                            <span className={`text-sm font-bold min-w-[40px] text-right ${pct >= 70 ? "text-primary" : pct >= 40 ? "text-amber-500" : "text-destructive"}`}>
+                              {pct}%
+                            </span>
+                          </div>
+                        );
+                      });
+                    })()}
+                  </div>
+                </div>
+              )}
+
               {/* Violations */}
               {testViolations.length > 0 && (
                 <div>
-                  <h3 className="text-sm font-semibold text-foreground mb-2">⚠️ Violations</h3>
-                  <div className="space-y-2">
+                  <h3 className="text-sm font-semibold text-foreground mb-2">⚠️ Violations ({testViolations.length})</h3>
+                  <div className="space-y-2 max-h-48 overflow-y-auto">
                     {testViolations.map((v: any) => (
                       <div key={v.id} className="flex items-start gap-2 text-sm p-2 rounded-lg bg-destructive/5 border border-destructive/20">
-                        <span className="text-destructive text-xs font-medium uppercase">{v.violation_type}</span>
+                        <span className="text-destructive text-xs font-medium uppercase shrink-0">{v.violation_type}</span>
                         <span className="text-muted-foreground">—</span>
-                        <span className="text-foreground">{v.description}</span>
+                        <span className="text-foreground flex-1">{v.description}</span>
+                        {v.question_number !== null && (
+                          <span className="text-xs text-muted-foreground shrink-0">Q{v.question_number}</span>
+                        )}
+                        <span className="text-[10px] text-muted-foreground shrink-0">
+                          {new Date(v.created_at).toLocaleTimeString()}
+                        </span>
                       </div>
                     ))}
                   </div>
                 </div>
               )}
 
-              {/* Time per question */}
+              {/* Question-by-Question Breakdown */}
+              {testQuestions.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-semibold text-foreground mb-3">📝 Question-by-Question Breakdown</h3>
+                  <div className="space-y-2 max-h-[400px] overflow-y-auto pr-1">
+                    {testQuestions.map((q: any, idx: number) => {
+                      const answer = testAnswers.find(a => a.question_index === idx);
+                      const selectedOption = answer?.selected_option;
+                      const correctIdx = q.correct_answer ? q.correct_answer.charCodeAt(0) - 65 : -1;
+                      const isCorrect = selectedOption === correctIdx;
+                      const isUnanswered = selectedOption === null || selectedOption === undefined;
+                      const timeSpent = answer?.time_spent_seconds ?? 0;
+
+                      return (
+                        <div key={idx} className={`p-3 rounded-lg border ${isUnanswered ? "border-muted bg-muted/30" : isCorrect ? "border-primary/30 bg-primary/5" : "border-destructive/30 bg-destructive/5"}`}>
+                          <div className="flex items-start justify-between gap-2 mb-2">
+                            <div className="flex items-center gap-2">
+                              <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${isUnanswered ? "bg-muted text-muted-foreground" : isCorrect ? "bg-primary/10 text-primary" : "bg-destructive/10 text-destructive"}`}>
+                                Q{idx + 1}
+                              </span>
+                              <span className="text-[10px] text-muted-foreground">{q.section}</span>
+                              <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${q.difficulty === "easy" ? "bg-primary/10 text-primary" : q.difficulty === "hard" ? "bg-destructive/10 text-destructive" : "bg-amber-500/10 text-amber-500"}`}>
+                                {q.difficulty}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground shrink-0">
+                              <span>⏱ {timeSpent}s</span>
+                              {isUnanswered ? (
+                                <span className="text-muted-foreground font-medium">Skipped</span>
+                              ) : isCorrect ? (
+                                <span className="text-primary font-medium">✓ Correct</span>
+                              ) : (
+                                <span className="text-destructive font-medium">✗ Wrong</span>
+                              )}
+                            </div>
+                          </div>
+                          <p className="text-sm text-foreground mb-2">{q.question}</p>
+                          <div className="grid grid-cols-2 gap-1.5">
+                            {q.options?.map((opt: string, oIdx: number) => {
+                              const isSelected = selectedOption === oIdx;
+                              const isCorrectOpt = oIdx === correctIdx;
+                              let optClass = "border-border text-muted-foreground";
+                              if (isCorrectOpt) optClass = "border-primary bg-primary/10 text-primary";
+                              if (isSelected && !isCorrect) optClass = "border-destructive bg-destructive/10 text-destructive";
+                              if (isSelected && isCorrect) optClass = "border-primary bg-primary/10 text-primary";
+
+                              return (
+                                <div key={oIdx} className={`text-xs px-2 py-1.5 rounded border ${optClass}`}>
+                                  <span className="font-bold mr-1">{String.fromCharCode(65 + oIdx)}.</span>
+                                  {opt}
+                                  {isSelected && <span className="ml-1">👈</span>}
+                                  {isCorrectOpt && !isSelected && <span className="ml-1">✓</span>}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Time per question heatmap */}
               {testAnswers.length > 0 && (
                 <div>
-                  <h3 className="text-sm font-semibold text-foreground mb-2">Time per Question (seconds)</h3>
+                  <h3 className="text-sm font-semibold text-foreground mb-2">⏱ Time per Question (seconds)</h3>
                   <div className="grid grid-cols-10 gap-1">
                     {testAnswers.map((a: any) => (
                       <div
@@ -496,6 +646,8 @@ const HRCandidatesView = ({ companyId }: Props) => {
                         className={`text-center p-1.5 rounded text-xs font-medium ${
                           a.time_spent_seconds < 3
                             ? "bg-destructive/10 text-destructive"
+                            : a.time_spent_seconds > 120
+                            ? "bg-amber-500/10 text-amber-500"
                             : "bg-muted text-muted-foreground"
                         }`}
                         title={`Q${a.question_index + 1}: ${a.time_spent_seconds}s`}
@@ -504,10 +656,13 @@ const HRCandidatesView = ({ companyId }: Props) => {
                       </div>
                     ))}
                   </div>
+                  <p className="text-[10px] text-muted-foreground mt-1">
+                    🔴 Under 3s (suspicious) • 🟡 Over 2min • ⚪ Normal
+                  </p>
                 </div>
               )}
 
-              <div className="flex gap-2">
+              <div className="flex gap-2 pt-2">
                 <Button
                   onClick={() => {
                     handleUpdateStage(testResultDialog.id, "interview");
