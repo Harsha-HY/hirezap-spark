@@ -361,10 +361,48 @@ const HRCandidatesView = ({ companyId }: Props) => {
   const handleViewVideo = async (app: any) => {
     setVideoDialog(app);
     setVideoSignedUrl(null);
+    setAnalyzingVideo(false);
     if (app.video_url) {
       const { data } = await supabase.storage.from("videos").createSignedUrl(app.video_url, 3600);
       if (data?.signedUrl) setVideoSignedUrl(data.signedUrl);
     }
+    // Auto-trigger AI analysis if not already done
+    if (app.video_url && !app.video_analysis) {
+      setAnalyzingVideo(true);
+      try {
+        const { data, error } = await supabase.functions.invoke("analyze-video", {
+          body: { applicationId: app.id },
+        });
+        if (error) throw error;
+        if (data?.analysis) {
+          setVideoDialog((prev: any) => prev ? { ...prev, video_analysis: data.analysis, video_score: data.analysis.overall_score } : prev);
+        }
+      } catch (e: any) {
+        console.error("Video analysis error:", e);
+        toast({ title: "Video Analysis", description: "AI analysis failed. You can retry later.", variant: "destructive" });
+      }
+      setAnalyzingVideo(false);
+      fetchApplications();
+    }
+  };
+
+  const handleRetryVideoAnalysis = async () => {
+    if (!videoDialog) return;
+    setAnalyzingVideo(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("analyze-video", {
+        body: { applicationId: videoDialog.id },
+      });
+      if (error) throw error;
+      if (data?.analysis) {
+        setVideoDialog((prev: any) => prev ? { ...prev, video_analysis: data.analysis, video_score: data.analysis.overall_score } : prev);
+        toast({ title: "✅ Analysis Complete", description: `Overall Score: ${data.analysis.overall_score}/100` });
+      }
+    } catch (e: any) {
+      toast({ title: "Error", description: e.message || "Analysis failed", variant: "destructive" });
+    }
+    setAnalyzingVideo(false);
+    fetchApplications();
   };
 
   const handleOpenTechnicalRound = async (app: Application & { candidate_name: string; job_title: string }) => {
