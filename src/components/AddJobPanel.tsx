@@ -55,7 +55,7 @@ const AddJobPanel = ({ open, onOpenChange, companyId, hrUserId, managers, onJobC
     e.preventDefault();
     setLoading(true);
 
-    const insertData: Record<string, unknown> = {
+    const { error } = await supabase.from("jobs").insert({
       title: form.title,
       department: form.department,
       manager_id: form.managerId || null,
@@ -70,9 +70,7 @@ const AddJobPanel = ({ open, onOpenChange, companyId, hrUserId, managers, onJobC
       posted_by: hrUserId,
       company_id: companyId,
       status: "open",
-    };
-
-    const { error } = await supabase.from("jobs").insert(insertData);
+    });
 
     if (error) {
       toast({ title: "Failed to post job", description: error.message, variant: "destructive" });
