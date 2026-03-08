@@ -358,6 +358,8 @@ const HRCandidatesView = ({ companyId }: Props) => {
                   const nextStage = getNextStage(app.current_stage);
                   const canOpenTest = ["ai_scored", "shortlisted"].includes(app.current_stage);
                   const canViewResults = app.current_stage === "test_completed" || app.test_score !== null;
+                  const canOpenVideo = app.current_stage === "test_completed";
+                  const canViewVideo = (app as any).video_url || app.current_stage === "video_submitted";
 
                   return (
                     <TableRow key={app.id}>
@@ -407,7 +409,7 @@ const HRCandidatesView = ({ companyId }: Props) => {
                         </Button>
                       </TableCell>
                       <TableCell>
-                        <div className="flex items-center gap-1">
+                        <div className="flex items-center gap-1 flex-wrap">
                           {canOpenTest && (
                             <Button
                               variant="ghost"
@@ -434,6 +436,28 @@ const HRCandidatesView = ({ companyId }: Props) => {
                             >
                               <Eye className="h-3.5 w-3.5" />
                               Results
+                            </Button>
+                          )}
+                          {canOpenVideo && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleOpenVideoIntro(app)}
+                              className="text-pink-500 hover:text-pink-600 gap-1 text-xs"
+                            >
+                              <Video className="h-3.5 w-3.5" />
+                              Open Video
+                            </Button>
+                          )}
+                          {canViewVideo && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleViewVideo(app)}
+                              className="text-emerald-500 hover:text-emerald-600 gap-1 text-xs"
+                            >
+                              <Play className="h-3.5 w-3.5" />
+                              Watch
                             </Button>
                           )}
                           {nextStage && app.current_stage !== "rejected" && app.current_stage !== "selected" && (
