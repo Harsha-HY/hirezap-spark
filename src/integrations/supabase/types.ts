@@ -32,6 +32,7 @@ export type Database = {
           resume_score: number | null
           resume_url: string | null
           status: string
+          test_score: number | null
           updated_at: string
         }
         Insert: {
@@ -51,6 +52,7 @@ export type Database = {
           resume_score?: number | null
           resume_url?: string | null
           status?: string
+          test_score?: number | null
           updated_at?: string
         }
         Update: {
@@ -70,6 +72,7 @@ export type Database = {
           resume_score?: number | null
           resume_url?: string | null
           status?: string
+          test_score?: number | null
           updated_at?: string
         }
         Relationships: [
@@ -225,6 +228,82 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      test_answers: {
+        Row: {
+          application_id: string
+          created_at: string
+          id: string
+          question_index: number
+          selected_option: number | null
+          time_spent_seconds: number | null
+        }
+        Insert: {
+          application_id: string
+          created_at?: string
+          id?: string
+          question_index: number
+          selected_option?: number | null
+          time_spent_seconds?: number | null
+        }
+        Update: {
+          application_id?: string
+          created_at?: string
+          id?: string
+          question_index?: number
+          selected_option?: number | null
+          time_spent_seconds?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "test_answers_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "applications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      test_violations: {
+        Row: {
+          application_id: string
+          candidate_id: string
+          created_at: string
+          description: string
+          id: string
+          job_id: string
+          question_number: number | null
+          violation_type: string
+        }
+        Insert: {
+          application_id: string
+          candidate_id: string
+          created_at?: string
+          description: string
+          id?: string
+          job_id: string
+          question_number?: number | null
+          violation_type: string
+        }
+        Update: {
+          application_id?: string
+          candidate_id?: string
+          created_at?: string
+          description?: string
+          id?: string
+          job_id?: string
+          question_number?: number | null
+          violation_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "test_violations_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "applications"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       users: {
         Row: {
