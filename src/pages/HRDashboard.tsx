@@ -3,12 +3,12 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Zap, BarChart3, Settings, Bell, LogOut, Plus, Users, Briefcase,
-  MessageSquare, Calendar, LayoutDashboard, Radio,
+  MessageSquare, Calendar, LayoutDashboard,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { motion, AnimatePresence } from "framer-motion";
 import AddJobPanel from "@/components/AddJobPanel";
+import HRJobsView from "@/components/hr/HRJobsView";
+import HRCandidatesView from "@/components/hr/HRCandidatesView";
 import { useToast } from "@/hooks/use-toast";
 
 interface JobRow {
@@ -30,7 +30,6 @@ const navItems = [
   { icon: Briefcase, label: "Jobs" },
   { icon: Users, label: "Candidates" },
   { icon: Calendar, label: "Interviews" },
-  { icon: Users, label: "Group Discussion" },
   { icon: MessageSquare, label: "Messages" },
   { icon: BarChart3, label: "Analytics" },
   { icon: Settings, label: "Settings" },
@@ -95,7 +94,6 @@ const HRDashboard = () => {
 
   useEffect(() => { fetchData(); }, []);
 
-  // Fetch notifications
   const fetchNotifications = useCallback(async () => {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) return;
@@ -120,7 +118,6 @@ const HRDashboard = () => {
 
   useEffect(() => { fetchNotifications(); }, [fetchNotifications]);
 
-  // Subscribe to realtime notifications
   useEffect(() => {
     const channel = supabase
       .channel("hr-notifications")
@@ -130,20 +127,13 @@ const HRDashboard = () => {
         (payload) => {
           const newNotif = payload.new as any;
           setNotifications((prev) => [newNotif, ...prev]);
-
-          // Show popup
           setLatestNotif({ title: newNotif.title, message: newNotif.message });
           setTimeout(() => setLatestNotif(null), 8000);
-
-          // Add to live activity
           setLiveActivities((prev) => [
             { message: newNotif.message, time: "Just now" },
             ...prev.slice(0, 9),
           ]);
-
-          // Refresh jobs to update application counts
           fetchData();
-
           toast({
             title: `🔔 ${newNotif.title}`,
             description: newNotif.message.substring(0, 100) + "...",
@@ -160,40 +150,121 @@ const HRDashboard = () => {
     navigate("/login");
   };
 
-  const handleNavClick = (label: string) => {
-    setActiveNav(label);
-
-    const sectionMap: Record<string, string> = {
-      Dashboard: "dashboard-top",
-      Jobs: "jobs-section",
-      Candidates: "candidates-section",
-      Interviews: "interviews-section",
-      "Group Discussion": "group-discussion-section",
-      Messages: "messages-section",
-      Analytics: "analytics-section",
-      Settings: "settings-section",
-    };
-
-    const sectionId = sectionMap[label];
-    if (sectionId) {
-      document.getElementById(sectionId)?.scrollIntoView({ behavior: "smooth", block: "start" });
-      return;
-    }
-
-    toast({ title: "Section unavailable", description: `${label} is not available yet.` });
-  };
-
-  const getManagerName = (managerId: string | null) => {
-    if (!managerId) return "—";
-    return managers.find(m => m.id === managerId)?.full_name || "—";
-  };
-
   const stats = [
     { icon: Briefcase, label: "Total Jobs Posted", value: jobs.length, color: "text-primary" },
     { icon: Users, label: "Total Applications", value: jobs.reduce((s, j) => s + j.applications_count, 0), color: "text-blue-400" },
     { icon: Users, label: "Shortlisted", value: 0, color: "text-amber-400" },
     { icon: Calendar, label: "Interviews Today", value: 0, color: "text-purple-400" },
   ];
+
+  const renderContent = () => {
+    switch (activeNav) {
+      case "Jobs":
+        return <HRJobsView jobs={jobs} managers={managers} onPostJob={() => setPanelOpen(true)} />;
+      case "Candidates":
+        return <HRCandidatesView companyId={companyId} />;
+      case "Interviews":
+        return (
+          <div className="rounded-xl border border-border bg-card p-8 text-center">
+            <Calendar className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+            <h2 className="text-lg font-semibold text-foreground">Interviews</h2>
+            <p className="text-sm text-muted-foreground mt-2">Interview scheduling module coming soon.</p>
+          </div>
+        );
+      case "Messages":
+        return (
+          <div className="rounded-xl border border-border bg-card p-8 text-center">
+            <MessageSquare className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+            <h2 className="text-lg font-semibold text-foreground">Messages</h2>
+            <p className="text-sm text-muted-foreground mt-2">Messaging module coming soon.</p>
+          </div>
+        );
+      case "Analytics":
+        return (
+          <div className="rounded-xl border border-border bg-card p-8 text-center">
+            <BarChart3 className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+            <h2 className="text-lg font-semibold text-foreground">Analytics</h2>
+            <p className="text-sm text-muted-foreground mt-2">Analytics module coming soon.</p>
+          </div>
+        );
+      case "Settings":
+        return (
+          <div className="rounded-xl border border-border bg-card p-8 text-center">
+            <Settings className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+            <h2 className="text-lg font-semibold text-foreground">Settings</h2>
+            <p className="text-sm text-muted-foreground mt-2">Settings module coming soon.</p>
+          </div>
+        );
+      default:
+        // Dashboard view
+        return (
+          <>
+            {/* Stat Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
+              {stats.map(({ icon: Icon, label, value, color }, i) => (
+                <motion.div
+                  key={label}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.1 }}
+                  className="rounded-xl border border-border bg-card p-5"
+                >
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-sm text-muted-foreground">{label}</span>
+                    <Icon className={`h-5 w-5 ${color}`} />
+                  </div>
+                  <p className="text-3xl font-bold text-foreground">{value}</p>
+                </motion.div>
+              ))}
+            </div>
+
+            {/* Live Activity Feed */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4 }}
+              className="rounded-xl border border-border bg-card p-6 mb-6"
+            >
+              <div className="flex items-center gap-3 mb-4">
+                <h2 className="text-lg font-semibold text-foreground">Live Activity</h2>
+                <div className="flex items-center gap-1.5">
+                  <span className="relative flex h-2.5 w-2.5">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-destructive opacity-75" />
+                    <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-destructive" />
+                  </span>
+                  <span className="text-xs font-semibold text-destructive uppercase tracking-wider">Live</span>
+                </div>
+              </div>
+              {liveActivities.length === 0 ? (
+                <p className="text-muted-foreground text-sm">No activity yet. Post a job to get started.</p>
+              ) : (
+                <div className="space-y-3">
+                  <AnimatePresence>
+                    {liveActivities.map((activity, i) => (
+                      <motion.div
+                        key={i}
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        className="flex items-start gap-3 text-sm"
+                      >
+                        <span className="text-primary">📄</span>
+                        <div>
+                          <p className="text-foreground">{activity.message}</p>
+                          <p className="text-xs text-muted-foreground">{activity.time}</p>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </AnimatePresence>
+                </div>
+              )}
+            </motion.div>
+
+            {/* Recent Jobs Summary */}
+            <HRJobsView jobs={jobs.slice(0, 5)} managers={managers} onPostJob={() => setPanelOpen(true)} />
+          </>
+        );
+    }
+  };
 
   return (
     <div className="flex min-h-screen bg-background">
@@ -220,7 +291,7 @@ const HRDashboard = () => {
           {navItems.map(({ icon: Icon, label }) => (
             <button
               key={label}
-              onClick={() => handleNavClick(label)}
+              onClick={() => setActiveNav(label)}
               className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
                 activeNav === label
                   ? "bg-primary/10 text-primary"
@@ -249,7 +320,7 @@ const HRDashboard = () => {
       {/* Main */}
       <div className="ml-60 flex-1 flex flex-col">
         <header className="sticky top-0 z-20 flex items-center justify-between border-b border-border bg-background/80 backdrop-blur-md px-8 py-4">
-          <h1 className="text-xl font-bold text-foreground">HR Dashboard</h1>
+          <h1 className="text-xl font-bold text-foreground">{activeNav}</h1>
           <div className="flex items-center gap-4">
             <div className="relative">
               <button
@@ -288,169 +359,8 @@ const HRDashboard = () => {
           </div>
         </header>
 
-        <main id="dashboard-top" className="flex-1 p-8">
-          {/* Stat Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
-            {stats.map(({ icon: Icon, label, value, color }, i) => (
-              <motion.div
-                key={label}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.1 }}
-                className="rounded-xl border border-border bg-card p-5"
-              >
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-sm text-muted-foreground">{label}</span>
-                  <Icon className={`h-5 w-5 ${color}`} />
-                </div>
-                <p className="text-3xl font-bold text-foreground">{value}</p>
-              </motion.div>
-            ))}
-          </div>
-
-          {/* Live Activity Feed */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
-            className="rounded-xl border border-border bg-card p-6 mb-6"
-          >
-            <div className="flex items-center gap-3 mb-4">
-              <h2 className="text-lg font-semibold text-foreground">Live Activity</h2>
-              <div className="flex items-center gap-1.5">
-                <span className="relative flex h-2.5 w-2.5">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-destructive opacity-75" />
-                  <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-destructive" />
-                </span>
-                <span className="text-xs font-semibold text-destructive uppercase tracking-wider">Live</span>
-              </div>
-            </div>
-            {liveActivities.length === 0 ? (
-              <p className="text-muted-foreground text-sm">No activity yet. Post a job to get started.</p>
-            ) : (
-              <div className="space-y-3">
-                <AnimatePresence>
-                  {liveActivities.map((activity, i) => (
-                    <motion.div
-                      key={i}
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      className="flex items-start gap-3 text-sm"
-                    >
-                      <span className="text-primary">📄</span>
-                      <div>
-                        <p className="text-foreground">{activity.message}</p>
-                        <p className="text-xs text-muted-foreground">{activity.time}</p>
-                      </div>
-                    </motion.div>
-                  ))}
-                </AnimatePresence>
-              </div>
-            )}
-          </motion.div>
-
-          {/* Jobs Section */}
-          <motion.div
-            id="jobs-section"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5 }}
-            className="rounded-xl border border-border bg-card"
-          >
-            <div className="flex items-center justify-between px-6 py-4 border-b border-border">
-              <h2 className="text-lg font-semibold text-foreground">Posted Jobs</h2>
-              <Button
-                onClick={() => setPanelOpen(true)}
-                className="bg-primary text-primary-foreground hover:bg-primary/90 gap-2"
-                size="sm"
-              >
-                <Plus className="h-4 w-4" />
-                Post New Job
-              </Button>
-            </div>
-            <Table>
-              <TableHeader>
-                <TableRow className="hover:bg-transparent">
-                  <TableHead>Job Title</TableHead>
-                  <TableHead>Department</TableHead>
-                  <TableHead>Manager</TableHead>
-                  <TableHead>Salary</TableHead>
-                  <TableHead>Applications</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Date Posted</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {jobs.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={8} className="text-center py-12 text-muted-foreground">
-                      No jobs posted yet. Click "+ Post New Job" to get started.
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  jobs.map((job) => (
-                    <TableRow key={job.id}>
-                      <TableCell className="font-medium">{job.title}</TableCell>
-                      <TableCell>{job.department}</TableCell>
-                      <TableCell>{getManagerName(job.manager_id)}</TableCell>
-                      <TableCell>
-                        {job.salary_min && job.salary_max
-                          ? `₹${job.salary_min.toLocaleString()} - ₹${job.salary_max.toLocaleString()}`
-                          : "—"}
-                      </TableCell>
-                      <TableCell>{job.applications_count}</TableCell>
-                      <TableCell>
-                        <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                          job.status === "open"
-                            ? "bg-primary/10 text-primary"
-                            : "bg-muted text-muted-foreground"
-                        }`}>
-                          {job.status.charAt(0).toUpperCase() + job.status.slice(1)}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground text-sm">
-                        {new Date(job.created_at).toLocaleDateString()}
-                      </TableCell>
-                      <TableCell>
-                        <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">•••</Button>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </motion.div>
-
-          <div id="candidates-section" className="rounded-xl border border-border bg-card p-6 mt-6">
-            <h2 className="text-lg font-semibold text-foreground">Candidates</h2>
-            <p className="text-sm text-muted-foreground mt-2">Candidates list module will be shown here.</p>
-          </div>
-
-          <div id="interviews-section" className="rounded-xl border border-border bg-card p-6 mt-6">
-            <h2 className="text-lg font-semibold text-foreground">Interviews</h2>
-            <p className="text-sm text-muted-foreground mt-2">Interview scheduling module will be shown here.</p>
-          </div>
-
-          <div id="group-discussion-section" className="rounded-xl border border-border bg-card p-6 mt-6">
-            <h2 className="text-lg font-semibold text-foreground">Group Discussion</h2>
-            <p className="text-sm text-muted-foreground mt-2">Group discussion rounds will be shown here.</p>
-          </div>
-
-          <div id="messages-section" className="rounded-xl border border-border bg-card p-6 mt-6">
-            <h2 className="text-lg font-semibold text-foreground">Messages</h2>
-            <p className="text-sm text-muted-foreground mt-2">Messaging center will be shown here.</p>
-          </div>
-
-          <div id="analytics-section" className="rounded-xl border border-border bg-card p-6 mt-6">
-            <h2 className="text-lg font-semibold text-foreground">Analytics</h2>
-            <p className="text-sm text-muted-foreground mt-2">Recruitment analytics will be shown here.</p>
-          </div>
-
-          <div id="settings-section" className="rounded-xl border border-border bg-card p-6 mt-6">
-            <h2 className="text-lg font-semibold text-foreground">Settings</h2>
-            <p className="text-sm text-muted-foreground mt-2">HR settings will be shown here.</p>
-          </div>
+        <main className="flex-1 p-8">
+          {renderContent()}
         </main>
       </div>
 
