@@ -208,7 +208,81 @@ const ReviewAssessment = () => {
     setRegeneratingAll(false);
   };
 
-  const handleApprove = async () => {
+  const handleUploadPdf = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.name.toLowerCase().endsWith(".pdf")) {
+      toast({ title: "Invalid File", description: "Please upload a PDF file.", variant: "destructive" });
+      return;
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      toast({ title: "File Too Large", description: "Maximum file size is 10MB.", variant: "destructive" });
+      return;
+    }
+
+    setUploadingPdf(true);
+    toast({ title: "📄 Processing PDF...", description: "AI is extracting and converting questions from your PDF." });
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      if (assessment?.job_id) formData.append("jobId", assessment.job_id);
+
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/parse-pdf-questions`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          },
+          body: formData,
+        }
+      );
+
+      if (!response.ok) {
+        const errData = await response.json();
+        throw new Error(errData.error || "Failed to process PDF");
+      }
+
+      const data = await response.json();
+
+      if (data?.questions?.sections) {
+        // Merge uploaded questions into existing sections or replace
+        const newSections = [...sections];
+        for (const uploadedSection of data.questions.sections) {
+          const existingIdx = newSections.findIndex(
+            (s) => s.name.toLowerCase() === uploadedSection.name.toLowerCase()
+          );
+          if (existingIdx !== -1) {
+            // Add to existing section
+            const startNum = newSections[existingIdx].questions.length + 1;
+            const numberedQuestions = uploadedSection.questions.map((q: Question, i: number) => ({
+              ...q,
+              question_number: startNum + i,
+            }));
+            newSections[existingIdx].questions.push(...numberedQuestions);
+          } else {
+            // Add as new section
+            newSections.push(uploadedSection);
+          }
+        }
+        await saveQuestions(newSections);
+        toast({
+          title: "✅ PDF Questions Added!",
+          description: `${data.questions.sections.reduce((sum: number, s: any) => sum + s.questions.length, 0)} questions extracted and added.`,
+        });
+      }
+    } catch (e: any) {
+      toast({ title: "Error", description: e.message || "Failed to process PDF", variant: "destructive" });
+    }
+
+    setUploadingPdf(false);
+    // Reset file input
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
     setApproving(true);
     try {
       // Update assessment status
