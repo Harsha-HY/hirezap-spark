@@ -252,6 +252,10 @@ const HRCandidatesView = ({ companyId }: Props) => {
           title: "🤖 AI has created 40 aptitude questions!",
           description: "Please review before sending to candidate. Nothing sent yet.",
         });
+        await notifyHROfManagerAction(
+          "📝 Questions Generated",
+          `${currentUserName} generated aptitude questions for ${app.candidate_name} (${app.job_title}).`
+        );
         navigate(`/review-assessment/${data.assessmentId}`);
       }
     } catch (e: any) {
