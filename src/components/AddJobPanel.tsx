@@ -220,6 +220,31 @@ const AddJobPanel = ({ open, onOpenChange, companyId, hrUserId, managers, onJobC
             />
           </div>
 
+          {/* Aptitude Cutoff */}
+          <div className="rounded-lg border border-border bg-secondary/30 p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <Target className="h-4 w-4 text-primary" />
+              <label className="text-sm font-medium text-foreground">Aptitude Cutoff Score</label>
+              <span className="ml-auto text-lg font-bold text-primary">{form.aptitudeCutoff}%</span>
+            </div>
+            <Slider
+              value={[form.aptitudeCutoff]}
+              onValueChange={(val) => setForm((p) => ({ ...p, aptitudeCutoff: val[0] }))}
+              min={0}
+              max={100}
+              step={5}
+              className="mb-2"
+            />
+            <div className="flex justify-between text-[10px] text-muted-foreground">
+              <span>0%</span>
+              <span>50%</span>
+              <span>100%</span>
+            </div>
+            <p className="text-[11px] text-muted-foreground mt-2">
+              Candidates scoring ≥ {form.aptitudeCutoff}% will auto-advance to Video Round
+            </p>
+          </div>
+
           <Button
             type="submit"
             disabled={loading}
