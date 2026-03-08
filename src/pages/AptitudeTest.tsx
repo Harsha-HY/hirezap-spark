@@ -234,9 +234,20 @@ const AptitudeTest = () => {
     canvasRef.current = canvas;
 
     let alertTimeout: ReturnType<typeof setTimeout> | null = null;
+    let motionStreak = 0;
+    let soundStreak = 0;
+
+    const maybeRecordViolation = async (type: string, description: string, cooldownMs = 12000) => {
+      const now = Date.now();
+      const lastLogged = violationCooldownRef.current[type] ?? 0;
+      if (now - lastLogged < cooldownMs) return;
+      violationCooldownRef.current[type] = now;
+      await recordViolation(type, description);
+    };
 
     const detectInterval = setInterval(() => {
-      let detected = false;
+      let motionDetected = false;
+      let soundDetected = false;
 
       // Motion detection via frame diff
       if (videoRef.current && ctx && videoRef.current.readyState >= 2) {
@@ -251,10 +262,8 @@ const AptitudeTest = () => {
             diffSum += Math.abs(curr[i] - prev[i]);
           }
           const avgDiff = diffSum / (curr.length / 16);
-          // High motion threshold — someone walking by
-          if (avgDiff > 25) {
-            detected = true;
-          }
+          motionStreak = avgDiff > 25 ? motionStreak + 1 : Math.max(0, motionStreak - 1);
+          motionDetected = motionStreak >= 3;
         }
         prevFrameRef.current = currentFrame;
       }
@@ -264,23 +273,54 @@ const AptitudeTest = () => {
         const dataArray = new Uint8Array(analyserRef.current.frequencyBinCount);
         analyserRef.current.getByteFrequencyData(dataArray);
         const avg = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
-        if (avg > 30) {
-          detected = true;
-        }
+        soundStreak = avg > 30 ? soundStreak + 1 : Math.max(0, soundStreak - 1);
+        soundDetected = soundStreak >= 3;
       }
 
-      if (detected) {
+      if (motionDetected || soundDetected) {
+        const possiblePhone = motionDetected && soundDetected;
+
         setCameraAlert(true);
+        setCameraCautionText(
+          possiblePhone
+            ? "Caution: possible external device/activity detected"
+            : motionDetected
+            ? "Caution: suspicious movement detected"
+            : "Caution: suspicious sound detected"
+        );
+
         if (alertTimeout) clearTimeout(alertTimeout);
-        alertTimeout = setTimeout(() => setCameraAlert(false), 2000);
+        alertTimeout = setTimeout(() => {
+          setCameraAlert(false);
+          setCameraCautionText("Monitoring environment");
+        }, 2200);
+
+        if (motionDetected) {
+          void maybeRecordViolation("motion_detected", `Suspicious movement detected near candidate at question ${currentQ + 1}`);
+        }
+
+        if (soundDetected) {
+          void maybeRecordViolation("sound_detected", `Suspicious sound detected near candidate at question ${currentQ + 1}`);
+        }
+
+        if (possiblePhone) {
+          void maybeRecordViolation(
+            "possible_phone_usage",
+            `Simultaneous motion and sound spikes indicate possible external device usage at question ${currentQ + 1}`,
+            18000
+          );
+        }
       }
     }, 500);
 
     return () => {
       clearInterval(detectInterval);
       if (alertTimeout) clearTimeout(alertTimeout);
+      prevFrameRef.current = null;
+      setCameraAlert(false);
+      setCameraCautionText("Monitoring environment");
     };
-  }, [phase]);
+  }, [phase, currentQ]);
 
   const startTest = async () => {
     // Request fullscreen
