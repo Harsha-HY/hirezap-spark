@@ -182,7 +182,7 @@ const CreateGDPanel = ({ open, onOpenChange, companyId, userId, userName, userRo
         await supabase.from("notifications").insert({
           user_id: app.candidate_id,
           title: "🎉 GD Round Scheduled!",
-          message: `You are selected for Group Discussion. Topic: ${topic}. Date: ${scheduledDate}, Time: ${scheduledTime}, Duration: ${duration} min. Group: ${groupName}. ${instructions ? `Instructions: ${instructions}` : ""} Be ready with good internet, camera, mic, and quiet environment.`,
+          message: `You are selected for Group Discussion. Topic: ${topic}. Date: ${scheduledDate}, Time: ${scheduledTime}, Duration: ${duration} min. Group: ${groupName}.${meetingLink ? ` Join here: ${meetingLink}` : ""} ${instructions ? `Instructions: ${instructions}` : ""} Be ready with good internet, camera, mic, and quiet environment.`,
         });
       }
 
