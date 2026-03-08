@@ -403,7 +403,20 @@ const AptitudeTest = () => {
     const totalQ = questions.length;
     answers.forEach((ans, i) => {
       if (questions[i] && ans !== null) {
-        const correctIdx = questions[i].correct_answer.charCodeAt(0) - 65;
+        const ca = (questions[i].correct_answer || "").toString().trim().toUpperCase();
+        let correctIdx = -1;
+        // Support letter format (A/B/C/D) or numeric (0/1/2/3)
+        if (ca.length === 1 && ca >= "A" && ca <= "D") {
+          correctIdx = ca.charCodeAt(0) - 65;
+        } else if (/^\d$/.test(ca)) {
+          correctIdx = parseInt(ca, 10);
+        } else {
+          // Try matching by option text
+          const matchIdx = questions[i].options?.findIndex(
+            (opt: string) => opt.trim().toLowerCase() === ca.toLowerCase()
+          );
+          if (matchIdx !== undefined && matchIdx >= 0) correctIdx = matchIdx;
+        }
         if (ans === correctIdx) correct++;
       }
     });

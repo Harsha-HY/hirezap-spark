@@ -84,7 +84,16 @@ Deno.serve(async (req) => {
       mcqQuestions.forEach((q: any, i: number) => {
         mcqTotal++;
         const selected = mcqAnswers[i];
-        const correctIdx = q.correct_answer ? q.correct_answer.charCodeAt(0) - 65 : -1;
+        const ca = (q.correct_answer || "").toString().trim().toUpperCase();
+        let correctIdx = -1;
+        if (ca.length === 1 && ca >= "A" && ca <= "D") {
+          correctIdx = ca.charCodeAt(0) - 65;
+        } else if (/^\d$/.test(ca)) {
+          correctIdx = parseInt(ca, 10);
+        } else if (q.options) {
+          const matchIdx = q.options.findIndex((opt: string) => opt.trim().toLowerCase() === ca.toLowerCase());
+          if (matchIdx >= 0) correctIdx = matchIdx;
+        }
         const isCorrect = selected === correctIdx;
         if (isCorrect) mcqCorrect++;
         mcqDetails.push({

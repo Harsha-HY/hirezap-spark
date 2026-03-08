@@ -628,11 +628,15 @@ const HRCandidatesView = ({ companyId }: Props) => {
     setBulkGeneratingTechnical(false);
   };
 
+  // Candidates who failed the cutoff
+  const failedApps = testCompletedApps.filter((a) => (a.test_score ?? 0) < cutoffScore);
+
   const handleBulkApprove = async () => {
-    if (qualifyingApps.length === 0) return;
+    if (qualifyingApps.length === 0 && failedApps.length === 0) return;
     setBulkApproving(true);
 
     try {
+      // Approve qualifying candidates
       for (const app of qualifyingApps) {
         await supabase
           .from("applications")
@@ -654,14 +658,36 @@ const HRCandidatesView = ({ companyId }: Props) => {
         }
       }
 
+      // Reject failed candidates and send "Better luck next time" notification
+      for (const app of failedApps) {
+        await supabase
+          .from("applications")
+          .update({ current_stage: "rejected", status: "rejected" })
+          .eq("id", app.id);
+
+        const { data: candidateUser } = await supabase
+          .from("users")
+          .select("id")
+          .eq("id", app.candidate_id)
+          .maybeSingle();
+
+        if (candidateUser) {
+          await supabase.from("notifications").insert({
+            user_id: candidateUser.id,
+            title: "Better Luck Next Time 🍀",
+            message: `Thank you for taking the aptitude test. Unfortunately, your score of ${app.test_score}% did not meet the required cutoff of ${cutoffScore}%. We appreciate your effort and wish you the best in your future endeavors. Good luck!`,
+          });
+        }
+      }
+
       await notifyHROfManagerAction(
         "📊 Bulk Cutoff Approval",
-        `${currentUserName} auto-approved ${qualifyingApps.length} candidates with aptitude score ≥ ${cutoffScore}% for Video Introduction.`
+        `${currentUserName} auto-approved ${qualifyingApps.length} candidates (≥ ${cutoffScore}%) and rejected ${failedApps.length} candidates (below cutoff).`
       );
 
       toast({
-        title: `✅ ${qualifyingApps.length} candidates approved!`,
-        description: `All candidates scoring ≥ ${cutoffScore}% moved to Video Introduction.`,
+        title: `✅ ${qualifyingApps.length} approved, ${failedApps.length} rejected`,
+        description: `Candidates above ${cutoffScore}% moved forward. Others notified with rejection.`,
       });
 
       setCutoffDialogOpen(false);

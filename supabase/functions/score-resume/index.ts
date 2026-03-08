@@ -100,7 +100,14 @@ Deno.serve(async (req) => {
     }
 
     // Build AI prompt
-    const prompt = `You are an expert HR recruiter. Analyze this resume against the job description and give scores.
+    const prompt = `You are an expert HR recruiter. Analyze this candidate's profile and resume against the job description and give an accurate score.
+
+IMPORTANT SCORING RULES:
+- Score MUST be based on actual skill match, experience fit, and job relevance
+- Experience match is critical: if candidate has ${application.experience_years} years and job needs ${job.experience_min ?? "N/A"}-${job.experience_max ?? "N/A"} years, factor this heavily
+- CTC expectations: Current ${application.current_ctc} LPA, Expected ${application.expected_ctc} LPA - flag if unreasonable
+- Score range: 0-30 = weak (major skill gaps), 31-60 = average (some match), 61-80 = good (strong match), 81-100 = excellent (perfect fit)
+- Be STRICT and ACCURATE. Do not inflate scores.
 
 Job Title: ${job.title}
 Department: ${job.department}
@@ -117,8 +124,10 @@ Expected CTC: ${application.expected_ctc} LPA
 Notice Period: ${application.notice_period} days
 Experience: ${application.experience_years} years
 
-Candidate Resume:
+Candidate Resume (may be partially extracted from PDF):
 ${resumeText}
+
+NOTE: If resume text is limited or unreadable, base your scoring primarily on the candidate information fields above and the job requirements. Do NOT give a high score just because resume text is unavailable.
 
 Return ONLY a valid JSON response with these exact fields:
 {
