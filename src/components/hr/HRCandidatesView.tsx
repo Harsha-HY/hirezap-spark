@@ -729,6 +729,18 @@ const HRCandidatesView = ({ companyId }: Props) => {
                               {generatingTechnicalFor === app.id ? "Generating..." : "Technical"}
                             </Button>
                           )}
+                          {canViewTechReport && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleViewTechReport(app)}
+                              className="text-teal-500 hover:text-teal-600 gap-1 text-xs"
+                              title="View Technical Report"
+                            >
+                              <Eye className="h-3.5 w-3.5" />
+                              Tech Report
+                            </Button>
+                          )}
                           {nextStage && app.current_stage !== "rejected" && app.current_stage !== "selected" && (
                             <Button
                               variant="ghost"
