@@ -7,6 +7,7 @@ import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import OwnerDashboard from "./pages/OwnerDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
+import HRDashboard from "./pages/HRDashboard";
 import NotFound from "./pages/NotFound";
 import ProtectedRoute from "./components/ProtectedRoute";
 
@@ -35,6 +36,14 @@ const App = () => (
             element={
               <ProtectedRoute requiredRole="superadmin">
                 <AdminDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/hr-dashboard"
+            element={
+              <ProtectedRoute requiredRole="hr">
+                <HRDashboard />
               </ProtectedRoute>
             }
           />
