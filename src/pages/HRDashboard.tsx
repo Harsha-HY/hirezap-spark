@@ -339,7 +339,7 @@ const HRDashboard = () => {
       {/* Main */}
       <div className="ml-60 flex-1 flex flex-col">
         <header className="sticky top-0 z-20 flex items-center justify-between border-b border-border bg-background/80 backdrop-blur-md px-8 py-4">
-          <h1 className="text-xl font-bold text-foreground">{activeNav}</h1>
+          <h1 className="text-xl font-bold text-foreground">{userRole === "manager" ? "Hiring Manager — " : ""}{activeNav}</h1>
           <div className="flex items-center gap-4">
             <div className="relative">
               <button
