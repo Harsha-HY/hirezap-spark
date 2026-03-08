@@ -26,7 +26,7 @@ interface JobRow {
 }
 
 const navItems = [
-  { icon: LayoutDashboard, label: "Dashboard", active: true },
+  { icon: LayoutDashboard, label: "Dashboard" },
   { icon: Briefcase, label: "Jobs" },
   { icon: Users, label: "Candidates" },
   { icon: Calendar, label: "Interviews" },
