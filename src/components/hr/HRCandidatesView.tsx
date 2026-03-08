@@ -233,6 +233,17 @@ const HRCandidatesView = ({ companyId }: Props) => {
   };
 
   const handleUpdateStage = async (appId: string, newStage: string) => {
+    // Optimistic update — instant UI change
+    const appData = applications.find((a) => a.id === appId);
+    setApplications((prev) =>
+      prev.map((a) =>
+        a.id === appId
+          ? { ...a, current_stage: newStage, status: newStage === "rejected" ? "rejected" : "active" }
+          : a
+      )
+    );
+    toast({ title: "Updated", description: `Candidate moved to ${stageLabel[newStage]}.` });
+
     const { error } = await supabase
       .from("applications")
       .update({ current_stage: newStage, status: newStage === "rejected" ? "rejected" : "active" })
@@ -240,16 +251,14 @@ const HRCandidatesView = ({ companyId }: Props) => {
 
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
+      fetchApplications(); // revert on error
       return;
     }
 
-    const appData = applications.find((a) => a.id === appId);
-    toast({ title: "Updated", description: `Candidate moved to ${stageLabel[newStage]}.` });
     await notifyHROfManagerAction(
       "Manager Action",
       `${currentUserName} moved ${appData?.candidate_name || "a candidate"} to ${stageLabel[newStage] || newStage}.`
     );
-    fetchApplications();
   };
 
   const handleOpenAptitudeTest = async (app: Application & { candidate_name: string; job_title: string }) => {
