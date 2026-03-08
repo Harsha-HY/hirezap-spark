@@ -43,6 +43,8 @@ const ReviewAssessment = () => {
   const [approving, setApproving] = useState(false);
   const [regeneratingAll, setRegeneratingAll] = useState(false);
   const [regeneratingIdx, setRegeneratingIdx] = useState<string | null>(null);
+  const [uploadingPdf, setUploadingPdf] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Edit dialog
   const [editDialog, setEditDialog] = useState<{ sectionIdx: number; questionIdx: number } | null>(null);
