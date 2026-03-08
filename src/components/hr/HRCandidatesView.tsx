@@ -317,6 +317,16 @@ const HRCandidatesView = ({ companyId }: Props) => {
       });
     }
 
+    // Auto-cleanup storage for terminal stages (hired, rejected, selected, onboarded)
+    if (["hired", "rejected", "selected", "onboarded"].includes(newStage)) {
+      supabase.functions.invoke("cleanup-storage", {
+        body: { applicationId: appId },
+      }).then((res) => {
+        if (res.error) console.error("Storage cleanup error:", res.error);
+        else console.log("Storage cleaned up for:", appId);
+      });
+    }
+
     await notifyHROfManagerAction(
       "Manager Action",
       `${currentUserName} moved ${appData?.candidate_name || "a candidate"} to ${stageLabel[newStage] || newStage}.`
