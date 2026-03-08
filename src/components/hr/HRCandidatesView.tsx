@@ -482,17 +482,19 @@ const HRCandidatesView = ({ companyId }: Props) => {
     setGeneratingTechnicalFor(null);
   };
 
+  const [techViolations, setTechViolations] = useState<any[]>([]);
+
   const handleViewTechReport = async (app: any) => {
     setTechnicalReportDialog(app);
     setTechnicalAssessment(null);
-    // Fetch the technical assessment questions
-    const { data: assessment } = await supabase
-      .from("assessments")
-      .select("questions")
-      .eq("application_id", app.id)
-      .eq("type", "technical")
-      .maybeSingle();
-    setTechnicalAssessment(assessment?.questions || null);
+    setTechViolations([]);
+    // Fetch assessment questions and violations in parallel
+    const [assessmentRes, violationsRes] = await Promise.all([
+      supabase.from("assessments").select("questions").eq("application_id", app.id).eq("type", "technical").maybeSingle(),
+      supabase.from("test_violations").select("*").eq("application_id", app.id).order("created_at", { ascending: true }),
+    ]);
+    setTechnicalAssessment(assessmentRes.data?.questions || null);
+    setTechViolations(violationsRes.data || []);
   };
 
   const getVerdict = (analysis: any): string => {
@@ -1538,6 +1540,28 @@ const HRCandidatesView = ({ companyId }: Props) => {
                           </div>
                         );
                       })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Violations during technical test */}
+                {techViolations.length > 0 && (
+                  <div>
+                    <h3 className="text-sm font-semibold text-foreground mb-2">⚠️ Proctoring Violations ({techViolations.length})</h3>
+                    <div className="space-y-2 max-h-48 overflow-y-auto">
+                      {techViolations.map((v: any) => (
+                        <div key={v.id} className="flex items-start gap-2 text-sm p-2 rounded-lg bg-destructive/5 border border-destructive/20">
+                          <span className="text-destructive text-xs font-medium uppercase shrink-0">{v.violation_type}</span>
+                          <span className="text-muted-foreground">—</span>
+                          <span className="text-foreground flex-1">{v.description}</span>
+                          {v.question_number !== null && (
+                            <span className="text-xs text-muted-foreground shrink-0">Q{v.question_number}</span>
+                          )}
+                          <span className="text-[10px] text-muted-foreground shrink-0">
+                            {new Date(v.created_at).toLocaleTimeString()}
+                          </span>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 )}

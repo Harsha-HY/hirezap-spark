@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -6,9 +6,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
-import { Loader2, ArrowLeft, ArrowRight, Clock, AlertTriangle, Send } from "lucide-react";
+import { Loader2, ArrowLeft, ArrowRight, Clock, AlertTriangle, Send, Shield, Camera } from "lucide-react";
 
 const TechnicalTest = () => {
   const navigate = useNavigate();
@@ -31,12 +32,32 @@ const TechnicalTest = () => {
 
   // Current indexes
   const [currentMcq, setCurrentMcq] = useState(0);
+  const [activeTab, setActiveTab] = useState("dsa");
 
   // Timer
-  const [timeLeft, setTimeLeft] = useState(90 * 60); // 90 minutes
+  const [timeLeft, setTimeLeft] = useState(90 * 60);
 
-  // Tab switch detection
-  const [violations, setViolations] = useState<string[]>([]);
+  // Proctoring state
+  const [phase, setPhase] = useState<"rules" | "test" | "submitted">("rules");
+  const [agreed, setAgreed] = useState(false);
+  const [violations, setViolations] = useState(0);
+  const [cameraAlert, setCameraAlert] = useState(false);
+  const [cameraCautionText, setCameraCautionText] = useState("Monitoring environment");
+
+  // Webcam refs
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const prevFrameRef = useRef<ImageData | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const violationCooldownRef = useRef<Record<string, number>>({});
+
+  // Track current context for violations
+  const activeTabRef = useRef(activeTab);
+  const currentMcqRef = useRef(currentMcq);
+  useEffect(() => { activeTabRef.current = activeTab; }, [activeTab]);
+  useEffect(() => { currentMcqRef.current = currentMcq; }, [currentMcq]);
 
   useEffect(() => {
     fetchData();
@@ -44,7 +65,7 @@ const TechnicalTest = () => {
 
   // Timer
   useEffect(() => {
-    if (submitted || loading) return;
+    if (phase !== "test" || submitted || loading) return;
     const interval = setInterval(() => {
       setTimeLeft((prev) => {
         if (prev <= 1) {
@@ -55,50 +76,252 @@ const TechnicalTest = () => {
       });
     }, 1000);
     return () => clearInterval(interval);
-  }, [submitted, loading]);
+  }, [phase, submitted, loading]);
 
-  // Tab switch detection
-  useEffect(() => {
-    if (submitted) return;
-    const handleVisibility = () => {
-      if (document.hidden) {
-        const msg = `Tab switch detected at ${new Date().toLocaleTimeString()}`;
-        setViolations((prev) => [...prev, msg]);
-        toast({ title: "⚠️ Warning!", description: "Tab switching detected. This will be reported.", variant: "destructive" });
-        reportViolation("tab_switch", "Candidate switched tabs during technical test");
-      }
-    };
-    document.addEventListener("visibilitychange", handleVisibility);
-    return () => document.removeEventListener("visibilitychange", handleVisibility);
-  }, [submitted]);
+  // Get current question context for violation reporting
+  const getCurrentContext = () => {
+    const tab = activeTabRef.current;
+    const mcqIdx = currentMcqRef.current;
+    if (tab === "mcq") return `MCQ Question ${mcqIdx + 1}`;
+    if (tab === "coding") return "Coding Tasks section";
+    return "DSA Problems section";
+  };
 
-  // Block copy/paste
-  useEffect(() => {
-    if (submitted) return;
-    const handleCopy = (e: Event) => {
-      e.preventDefault();
-      toast({ title: "⚠️ Copy/Paste Blocked", description: "This action is not allowed during the test.", variant: "destructive" });
-      reportViolation("copy_paste", "Attempted copy/paste during technical test");
-    };
-    document.addEventListener("copy", handleCopy);
-    document.addEventListener("paste", handleCopy);
-    document.addEventListener("cut", handleCopy);
-    return () => {
-      document.removeEventListener("copy", handleCopy);
-      document.removeEventListener("paste", handleCopy);
-      document.removeEventListener("cut", handleCopy);
-    };
-  }, [submitted]);
-
-  const reportViolation = async (type: string, description: string) => {
+  const recordViolation = async (type: string, desc: string) => {
+    setViolations((v) => v + 1);
     if (!application) return;
+
     await supabase.from("test_violations").insert({
       application_id: application.id,
       candidate_id: application.candidate_id,
       job_id: application.job_id,
       violation_type: type,
-      description,
+      description: desc,
+      question_number: activeTabRef.current === "mcq" ? currentMcqRef.current + 1 : null,
     });
+
+    // Notify manager in real-time
+    try {
+      const { data: job } = await supabase.from("jobs").select("manager_id, company_id, title").eq("id", application.job_id).maybeSingle();
+      if (job) {
+        const notifTargets: string[] = [];
+        if (job.manager_id) notifTargets.push(job.manager_id);
+        // Also notify HR
+        const { data: hrUsers } = await supabase.from("users").select("id").eq("company_id", job.company_id).eq("role", "hr");
+        hrUsers?.forEach((u) => notifTargets.push(u.id));
+
+        if (notifTargets.length > 0) {
+          const { data: candidateUser } = await supabase.from("users").select("full_name").eq("id", application.candidate_id).maybeSingle();
+          const candidateName = candidateUser?.full_name || "A candidate";
+          await supabase.from("notifications").insert(
+            notifTargets.map((uid) => ({
+              user_id: uid,
+              title: "⚠️ Technical Test Violation!",
+              message: `${candidateName} (${job.title}): ${desc}`,
+            }))
+          );
+        }
+      }
+    } catch (e) {
+      console.error("Failed to send violation notification:", e);
+    }
+  };
+
+  // Anti-cheat: Tab switch detection
+  useEffect(() => {
+    if (phase !== "test") return;
+    const handleVisibility = () => {
+      if (document.hidden) {
+        recordViolation("tab_switch", `Switched tab while on ${getCurrentContext()}`);
+        toast({ title: "⚠️ Tab switch detected!", description: "This has been reported. 3 violations = test cancelled.", variant: "destructive" });
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => document.removeEventListener("visibilitychange", handleVisibility);
+  }, [phase]);
+
+  // Anti-cheat: Copy/Paste/Right-click/Keyboard shortcuts
+  useEffect(() => {
+    if (phase !== "test") return;
+
+    const blockCopy = (e: ClipboardEvent) => {
+      e.preventDefault();
+      recordViolation("copy_paste", `Copy/paste attempted while on ${getCurrentContext()}`);
+      toast({ title: "⚠️ Copy/Paste blocked!", description: "This action is not allowed.", variant: "destructive" });
+    };
+
+    const blockContext = (e: MouseEvent) => {
+      e.preventDefault();
+      toast({ title: "Right-click disabled", description: "Right-click is not allowed during the test." });
+    };
+
+    const blockKeys = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && ["c", "v", "a", "u"].includes(e.key.toLowerCase())) {
+        // Allow paste in code textarea areas - but still record
+        if (e.key.toLowerCase() === "v") {
+          e.preventDefault();
+          recordViolation("copy_paste", `Paste shortcut blocked while on ${getCurrentContext()}`);
+          toast({ title: "⚠️ Paste blocked!", description: "Pasting from external sources is not allowed.", variant: "destructive" });
+          return;
+        }
+        if (e.key.toLowerCase() === "c") {
+          e.preventDefault();
+          recordViolation("copy_paste", `Copy shortcut blocked while on ${getCurrentContext()}`);
+          return;
+        }
+        e.preventDefault();
+      }
+      if (e.key === "F12" || (e.ctrlKey && e.shiftKey && e.key === "I")) {
+        e.preventDefault();
+        recordViolation("devtools", `Attempted to open DevTools while on ${getCurrentContext()}`);
+      }
+    };
+
+    document.addEventListener("copy", blockCopy);
+    document.addEventListener("paste", blockCopy);
+    document.addEventListener("cut", blockCopy);
+    document.addEventListener("contextmenu", blockContext);
+    document.addEventListener("keydown", blockKeys);
+
+    return () => {
+      document.removeEventListener("copy", blockCopy);
+      document.removeEventListener("paste", blockCopy);
+      document.removeEventListener("cut", blockCopy);
+      document.removeEventListener("contextmenu", blockContext);
+      document.removeEventListener("keydown", blockKeys);
+    };
+  }, [phase]);
+
+  // Fullscreen enforcement
+  useEffect(() => {
+    if (phase !== "test") return;
+    const handleFullscreenChange = () => {
+      if (!document.fullscreenElement) {
+        recordViolation("fullscreen_exit", `Exited fullscreen while on ${getCurrentContext()}`);
+        toast({ title: "⚠️ Fullscreen exited!", description: "Please stay in fullscreen mode. Re-entering...", variant: "destructive" });
+        setTimeout(() => {
+          document.documentElement.requestFullscreen().catch(() => {});
+        }, 500);
+      }
+    };
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    return () => document.removeEventListener("fullscreenchange", handleFullscreenChange);
+  }, [phase]);
+
+  // Motion & Sound detection
+  useEffect(() => {
+    if (phase !== "test") return;
+
+    const canvas = document.createElement("canvas");
+    canvas.width = 160;
+    canvas.height = 120;
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
+    canvasRef.current = canvas;
+
+    let alertTimeout: ReturnType<typeof setTimeout> | null = null;
+    let motionStreak = 0;
+    let soundStreak = 0;
+
+    const maybeRecordViolation = async (type: string, description: string, cooldownMs = 12000) => {
+      const now = Date.now();
+      const lastLogged = violationCooldownRef.current[type] ?? 0;
+      if (now - lastLogged < cooldownMs) return;
+      violationCooldownRef.current[type] = now;
+      await recordViolation(type, description);
+    };
+
+    const detectInterval = setInterval(() => {
+      let motionDetected = false;
+      let soundDetected = false;
+
+      if (videoRef.current && ctx && videoRef.current.readyState >= 2) {
+        ctx.drawImage(videoRef.current, 0, 0, 160, 120);
+        const currentFrame = ctx.getImageData(0, 0, 160, 120);
+        if (prevFrameRef.current) {
+          let diffSum = 0;
+          const prev = prevFrameRef.current.data;
+          const curr = currentFrame.data;
+          for (let i = 0; i < curr.length; i += 16) {
+            diffSum += Math.abs(curr[i] - prev[i]);
+          }
+          const avgDiff = diffSum / (curr.length / 16);
+          motionStreak = avgDiff > 25 ? motionStreak + 1 : Math.max(0, motionStreak - 1);
+          motionDetected = motionStreak >= 3;
+        }
+        prevFrameRef.current = currentFrame;
+      }
+
+      if (analyserRef.current) {
+        const dataArray = new Uint8Array(analyserRef.current.frequencyBinCount);
+        analyserRef.current.getByteFrequencyData(dataArray);
+        const avg = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
+        soundStreak = avg > 30 ? soundStreak + 1 : Math.max(0, soundStreak - 1);
+        soundDetected = soundStreak >= 3;
+      }
+
+      if (motionDetected || soundDetected) {
+        const possiblePhone = motionDetected && soundDetected;
+        setCameraAlert(true);
+        setCameraCautionText(
+          possiblePhone ? "Caution: possible external device detected" :
+          motionDetected ? "Caution: suspicious movement detected" :
+          "Caution: suspicious sound detected"
+        );
+        if (alertTimeout) clearTimeout(alertTimeout);
+        alertTimeout = setTimeout(() => {
+          setCameraAlert(false);
+          setCameraCautionText("Monitoring environment");
+        }, 2200);
+
+        if (motionDetected) {
+          void maybeRecordViolation("motion_detected", `Suspicious movement at ${getCurrentContext()}`);
+        }
+        if (soundDetected) {
+          void maybeRecordViolation("sound_detected", `Suspicious sound at ${getCurrentContext()}`);
+        }
+        if (possiblePhone) {
+          void maybeRecordViolation("possible_phone_usage", `Possible phone usage at ${getCurrentContext()}`, 18000);
+        }
+      }
+    }, 500);
+
+    return () => {
+      clearInterval(detectInterval);
+      if (alertTimeout) clearTimeout(alertTimeout);
+      prevFrameRef.current = null;
+      setCameraAlert(false);
+      setCameraCautionText("Monitoring environment");
+    };
+  }, [phase]);
+
+  const startTest = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 720 } },
+        audio: true,
+      });
+      streamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        videoRef.current.muted = true;
+        videoRef.current.playsInline = true;
+        await videoRef.current.play().catch(() => undefined);
+      }
+
+      try { await document.documentElement.requestFullscreen(); } catch {}
+
+      const audioCtx = new AudioContext();
+      const source = audioCtx.createMediaStreamSource(stream);
+      const analyser = audioCtx.createAnalyser();
+      analyser.fftSize = 256;
+      source.connect(analyser);
+      audioContextRef.current = audioCtx;
+      analyserRef.current = analyser;
+
+      setPhase("test");
+    } catch (e) {
+      toast({ title: "Camera Required", description: "Please allow camera and microphone access to start the test.", variant: "destructive" });
+    }
   };
 
   const fetchData = async () => {
@@ -108,7 +331,6 @@ const TechnicalTest = () => {
     const { data: userData } = await supabase.from("users").select("id").eq("user_id", session.user.id).maybeSingle();
     if (!userData) return;
 
-    // Get application at technical_test stage
     const { data: apps } = await supabase
       .from("applications")
       .select("*")
@@ -124,7 +346,6 @@ const TechnicalTest = () => {
     const app = apps[0];
     setApplication(app);
 
-    // Get approved technical assessment
     const { data: assessmentData } = await supabase
       .from("assessments")
       .select("*")
@@ -154,7 +375,6 @@ const TechnicalTest = () => {
     try {
       toast({ title: "📤 Submitting...", description: "AI is analyzing your code. This may take a moment." });
 
-      // Save MCQ answers to test_answers table
       const mcqStartIdx = dsaProblems.length + codingTasks.length;
       const allAnswers: any[] = [];
       mcqQuestions.forEach((_, i) => {
@@ -169,7 +389,6 @@ const TechnicalTest = () => {
         await supabase.from("test_answers").insert(allAnswers);
       }
 
-      // Call AI scoring edge function
       const { data, error } = await supabase.functions.invoke("score-technical", {
         body: {
           applicationId: application.id,
@@ -184,7 +403,15 @@ const TechnicalTest = () => {
 
       if (error) throw error;
 
+      // Exit fullscreen
+      if (document.fullscreenElement) {
+        document.exitFullscreen().catch(() => {});
+      }
+      // Stop camera
+      streamRef.current?.getTracks().forEach((t) => t.stop());
+
       setSubmitted(true);
+      setPhase("submitted");
       toast({ title: "✅ Test Submitted!", description: "Your technical test has been submitted and AI analysis is complete." });
     } catch (e: any) {
       toast({ title: "Error", description: e.message, variant: "destructive" });
@@ -206,13 +433,63 @@ const TechnicalTest = () => {
     );
   }
 
-  if (submitted) {
+  // Rules screen before test starts
+  if (phase === "rules") {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-background p-6">
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="max-w-lg w-full rounded-2xl border border-border bg-card p-8">
+          <div className="flex items-center gap-3 mb-6">
+            <Shield className="h-8 w-8 text-primary" />
+            <div>
+              <h1 className="text-xl font-bold text-foreground">Technical Assessment Rules</h1>
+              <p className="text-sm text-muted-foreground">Read carefully before starting</p>
+            </div>
+          </div>
+
+          <div className="space-y-3 mb-6">
+            {[
+              "⏱ You have 90 minutes to complete all sections (DSA, Coding, MCQ).",
+              "📹 Your camera and microphone MUST remain ON throughout the test.",
+              "🚫 Tab switching, copy-paste, and right-click are BLOCKED and will be reported.",
+              "🖥 The test runs in fullscreen mode. Exiting fullscreen is a violation.",
+              "🤖 AI monitors for suspicious movement, sound, and external device usage.",
+              "⚠️ Every violation is reported in real-time to the hiring manager with exact context.",
+              "❌ 3+ violations may result in automatic test cancellation.",
+              "📝 Write your own code. Type directly in the editor — no external help allowed.",
+            ].map((rule, i) => (
+              <div key={i} className="flex items-start gap-2 text-sm text-muted-foreground">
+                <span className="shrink-0">{rule.slice(0, 2)}</span>
+                <span>{rule.slice(3)}</span>
+              </div>
+            ))}
+          </div>
+
+          <div className="flex items-center gap-3 mb-6 p-3 rounded-lg border border-border bg-muted/50">
+            <Checkbox id="agree" checked={agreed} onCheckedChange={(v) => setAgreed(v === true)} />
+            <Label htmlFor="agree" className="text-sm text-foreground cursor-pointer">
+              I have read and agree to all rules. I understand violations will be reported.
+            </Label>
+          </div>
+
+          <Button onClick={startTest} disabled={!agreed} className="w-full bg-primary text-primary-foreground gap-2">
+            <Camera className="h-4 w-4" />
+            Start Technical Test
+          </Button>
+        </motion.div>
+      </div>
+    );
+  }
+
+  if (submitted || phase === "submitted") {
     return (
       <div className="flex items-center justify-center min-h-screen bg-background">
         <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="text-center p-8 rounded-2xl border border-border bg-card max-w-md">
           <div className="text-5xl mb-4">✅</div>
           <h2 className="text-2xl font-bold text-foreground mb-2">Test Submitted!</h2>
           <p className="text-muted-foreground mb-6">Your technical test has been submitted. You'll be notified once the results are reviewed.</p>
+          {violations > 0 && (
+            <p className="text-sm text-destructive mb-4">⚠️ {violations} violation(s) were recorded during your test.</p>
+          )}
           <Button onClick={() => navigate("/candidate-dashboard")} className="bg-primary text-primary-foreground">Back to Dashboard</Button>
         </motion.div>
       </div>
@@ -221,7 +498,10 @@ const TechnicalTest = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header with timer */}
+      {/* Hidden webcam */}
+      <video ref={videoRef} className="fixed top-0 left-0 w-1 h-1 opacity-0 pointer-events-none" />
+
+      {/* Header with timer + proctoring indicator */}
       <div className="sticky top-0 z-30 border-b border-border bg-card/95 backdrop-blur-md px-6 py-3">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <div>
@@ -229,10 +509,18 @@ const TechnicalTest = () => {
             <p className="text-xs text-muted-foreground">{dsaProblems.length} DSA • {codingTasks.length} Coding • {mcqQuestions.length} MCQ</p>
           </div>
           <div className="flex items-center gap-4">
-            {violations.length > 0 && (
+            {/* Proctoring indicator */}
+            <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+              cameraAlert ? "bg-destructive/10 text-destructive border border-destructive/30" : "bg-muted text-muted-foreground"
+            }`}>
+              <div className={`h-2 w-2 rounded-full ${cameraAlert ? "bg-destructive animate-pulse" : "bg-primary"}`} />
+              {cameraCautionText}
+            </div>
+
+            {violations > 0 && (
               <div className="flex items-center gap-1 text-destructive text-sm">
                 <AlertTriangle className="h-4 w-4" />
-                {violations.length} violations
+                {violations} violations
               </div>
             )}
             <div className={`flex items-center gap-2 px-4 py-2 rounded-lg border ${timeLeft < 300 ? "border-destructive bg-destructive/10 text-destructive" : "border-border text-foreground"}`}>
@@ -248,7 +536,7 @@ const TechnicalTest = () => {
       </div>
 
       <div className="max-w-6xl mx-auto p-6">
-        <Tabs defaultValue="dsa" className="w-full">
+        <Tabs defaultValue="dsa" className="w-full" onValueChange={(v) => setActiveTab(v)}>
           <TabsList className="mb-6">
             <TabsTrigger value="dsa">🧩 DSA Problems ({dsaProblems.length})</TabsTrigger>
             <TabsTrigger value="coding">💻 Coding Tasks ({codingTasks.length})</TabsTrigger>
@@ -281,6 +569,7 @@ const TechnicalTest = () => {
                       onChange={(e) => setDsaAnswers({ ...dsaAnswers, [idx]: e.target.value })}
                       placeholder="// Write your code solution here...&#10;// Include your approach, algorithm, and implementation&#10;&#10;function solve(input) {&#10;  // Your code here&#10;}"
                       className="font-mono text-sm min-h-[250px] bg-muted/30 border-border"
+                      onPaste={(e) => e.preventDefault()}
                     />
                   </div>
                   <div>
@@ -290,6 +579,7 @@ const TechnicalTest = () => {
                       onChange={(e) => setDsaAnswers({ ...dsaAnswers, [`${idx}_output`]: e.target.value })}
                       placeholder="Explain your approach, time/space complexity, and paste your expected output for the test cases here..."
                       className="text-sm min-h-[100px]"
+                      onPaste={(e) => e.preventDefault()}
                     />
                   </div>
                 </div>
@@ -316,6 +606,7 @@ const TechnicalTest = () => {
                       onChange={(e) => setCodingAnswers({ ...codingAnswers, [idx]: e.target.value })}
                       placeholder="// Write your complete code solution here...&#10;// Include imports, functions, and main logic"
                       className="font-mono text-sm min-h-[250px] bg-muted/30 border-border"
+                      onPaste={(e) => e.preventDefault()}
                     />
                   </div>
                   <div>
@@ -325,6 +616,7 @@ const TechnicalTest = () => {
                       onChange={(e) => setCodingAnswers({ ...codingAnswers, [`${idx}_output`]: e.target.value })}
                       placeholder="Paste your expected output, explain design decisions, or add any notes about your implementation..."
                       className="text-sm min-h-[100px]"
+                      onPaste={(e) => e.preventDefault()}
                     />
                   </div>
                 </div>
@@ -341,7 +633,6 @@ const TechnicalTest = () => {
                     <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${mcqQuestions[currentMcq].difficulty === "easy" ? "bg-primary/10 text-primary" : mcqQuestions[currentMcq].difficulty === "hard" ? "bg-destructive/10 text-destructive" : "bg-amber-500/10 text-amber-500"}`}>{mcqQuestions[currentMcq].difficulty}</span>
                     <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-purple-500/10 text-purple-500">{mcqQuestions[currentMcq].topic}</span>
                   </div>
-                  {/* Progress dots */}
                   <div className="flex gap-1">
                     {mcqQuestions.map((_, i) => (
                       <button
