@@ -495,6 +495,7 @@ const HRCandidatesView = ({ companyId }: Props) => {
     setTechnicalAssessment(assessment?.questions || null);
   };
 
+  const getVerdict = (analysis: any): string => {
     if (!analysis) return "—";
     if (typeof analysis === "object" && analysis.verdict) return analysis.verdict;
     return "—";
