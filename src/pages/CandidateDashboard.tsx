@@ -3,10 +3,15 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Zap, LayoutDashboard, Briefcase, MessageSquare, Settings,
-  Bell, User, LogOut, CheckCircle2, Clock, Lock
+  Bell, User, LogOut, CheckCircle2, Clock, Lock, FileText,
+  Upload, Video, ExternalLink
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
+import { useToast } from "@/hooks/use-toast";
+import NegotiationChat from "@/components/NegotiationChat";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
 
 const stages = [
   { key: "applied", label: "Applied", icon: "✅" },
