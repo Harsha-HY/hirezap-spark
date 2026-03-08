@@ -273,14 +273,25 @@ const TechnicalTest = () => {
                     ))}
                   </div>
                 )}
-                <div>
-                  <label className="text-sm font-medium text-foreground mb-2 block">Your Solution:</label>
-                  <Textarea
-                    value={dsaAnswers[idx] || ""}
-                    onChange={(e) => setDsaAnswers({ ...dsaAnswers, [idx]: e.target.value })}
-                    placeholder="Write your code solution here..."
-                    className="font-mono text-sm min-h-[200px]"
-                  />
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-sm font-medium text-foreground mb-2 block">💻 Your Code Solution:</label>
+                    <Textarea
+                      value={dsaAnswers[idx] || ""}
+                      onChange={(e) => setDsaAnswers({ ...dsaAnswers, [idx]: e.target.value })}
+                      placeholder="// Write your code solution here...&#10;// Include your approach, algorithm, and implementation&#10;&#10;function solve(input) {&#10;  // Your code here&#10;}"
+                      className="font-mono text-sm min-h-[250px] bg-muted/30 border-border"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-foreground mb-2 block">📋 Expected Output / Explanation:</label>
+                    <Textarea
+                      value={(dsaAnswers[`${idx}_output`] as string) || ""}
+                      onChange={(e) => setDsaAnswers({ ...dsaAnswers, [`${idx}_output`]: e.target.value })}
+                      placeholder="Explain your approach, time/space complexity, and paste your expected output for the test cases here..."
+                      className="text-sm min-h-[100px]"
+                    />
+                  </div>
                 </div>
               </motion.div>
             ))}
