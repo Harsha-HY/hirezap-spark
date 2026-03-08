@@ -1070,7 +1070,7 @@ const HRCandidatesView = ({ companyId }: Props) => {
                 </div>
               )}
 
-              {videoDialog.video_analysis && !analyzingVideo && (() => {
+              {videoDialog.video_analysis && !analyzingVideo && videoDialog.video_analysis.status !== "processing" && videoDialog.video_analysis.status !== "failed" && (() => {
                 const va = videoDialog.video_analysis;
                 const metrics = [
                   { key: "energy_level", label: "⚡ Energy Level", icon: "⚡" },
