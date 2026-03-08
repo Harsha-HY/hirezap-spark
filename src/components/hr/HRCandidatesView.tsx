@@ -355,6 +355,52 @@ const HRCandidatesView = ({ companyId }: Props) => {
     }
   };
 
+  const handleOpenTechnicalRound = async (app: Application & { candidate_name: string; job_title: string }) => {
+    setGeneratingTechnicalFor(app.id);
+    toast({
+      title: "🤖 Generating Technical Questions...",
+      description: "AI is creating DSA, coding, and MCQ questions based on the candidate's resume. Please wait.",
+    });
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      const { data: currentUser } = await supabase
+        .from("users")
+        .select("id")
+        .eq("user_id", session.user.id)
+        .maybeSingle();
+
+      const { data, error } = await supabase.functions.invoke("generate-technical", {
+        body: {
+          jobId: app.job_id,
+          applicationId: app.id,
+          companyId,
+          createdBy: currentUser?.id,
+        },
+      });
+
+      if (error) throw error;
+
+      if (data?.assessmentId) {
+        // Update stage to technical_round (pending approval)
+        await supabase.from("applications").update({ current_stage: "technical_round" }).eq("id", app.id);
+        toast({
+          title: "🤖 Technical questions generated!",
+          description: "Both HR and Manager must review and approve before sending to candidate.",
+        });
+        await notifyHROfManagerAction(
+          "💻 Technical Round Opened",
+          `${currentUserName} opened technical round for ${app.candidate_name} (${app.job_title}).`
+        );
+        navigate(`/review-technical/${data.assessmentId}`);
+      }
+    } catch (e: any) {
+      toast({ title: "Error", description: e.message || "Failed to generate technical questions", variant: "destructive" });
+    }
+    setGeneratingTechnicalFor(null);
+  };
+
   const getVerdict = (analysis: any): string => {
     if (!analysis) return "—";
     if (typeof analysis === "object" && analysis.verdict) return analysis.verdict;
