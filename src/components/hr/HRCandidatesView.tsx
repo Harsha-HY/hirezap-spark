@@ -69,6 +69,7 @@ const stageBadgeClass: Record<string, string> = {
   technical_test: "bg-orange-500/10 text-orange-500",
   technical_completed: "bg-teal-500/10 text-teal-500",
   group_discussion: "bg-cyan-500/10 text-cyan-500",
+  gd_completed: "bg-cyan-500/10 text-cyan-500",
   interview: "bg-indigo-500/10 text-indigo-500",
   selected: "bg-primary/10 text-primary",
   rejected: "bg-destructive/10 text-destructive",
