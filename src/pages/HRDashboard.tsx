@@ -279,7 +279,7 @@ const HRDashboard = () => {
             </motion.div>
 
             {/* Recent Jobs Summary */}
-            <HRJobsView jobs={jobs.slice(0, 5)} managers={managers} onPostJob={() => setPanelOpen(true)} />
+            <HRJobsView jobs={jobs.slice(0, 5)} managers={managers} onPostJob={() => setPanelOpen(true)} onJobUpdated={fetchData} />
           </>
         );
     }
