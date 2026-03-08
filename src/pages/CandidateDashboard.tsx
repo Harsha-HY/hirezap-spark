@@ -185,7 +185,12 @@ const CandidateDashboard = () => {
     window.open(data.signedUrl, "_blank", "noopener,noreferrer");
   };
 
-  if (loading) {
+  const normalizeMeetingLink = (url: string) => {
+    const trimmed = url.trim();
+    if (!trimmed) return "";
+    return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+  };
+
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
