@@ -39,6 +39,7 @@ interface Application {
 const CandidateDashboard = () => {
   const [user, setUser] = useState<any>(null);
   const [applications, setApplications] = useState<Application[]>([]);
+  const [submittedTestAppIds, setSubmittedTestAppIds] = useState<Set<string>>(new Set());
   const [notifications, setNotifications] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeSidebar, setActiveSidebar] = useState("Dashboard");
@@ -67,7 +68,22 @@ const CandidateDashboard = () => {
       .eq("candidate_id", userData.id)
       .order("applied_at", { ascending: false });
 
-    if (apps) setApplications(apps as unknown as Application[]);
+    if (apps) {
+      const appRows = apps as unknown as Application[];
+      setApplications(appRows);
+
+      const appIds = appRows.map((a) => a.id);
+      if (appIds.length > 0) {
+        const { data: answerRows } = await supabase
+          .from("test_answers")
+          .select("application_id")
+          .in("application_id", appIds);
+
+        setSubmittedTestAppIds(new Set((answerRows || []).map((r: any) => r.application_id)));
+      } else {
+        setSubmittedTestAppIds(new Set());
+      }
+    }
 
     const { data: notifs } = await supabase
       .from("notifications")
@@ -213,10 +229,13 @@ const CandidateDashboard = () => {
 
                 <div className="space-y-4">
                   {stages.map((stage, idx) => {
-                    const rawStage = applications[0].current_stage;
+                    const latestApplication = applications[0];
+                    const rawStage = latestApplication.current_stage;
+                    const hasSubmittedCurrentTest = submittedTestAppIds.has(latestApplication.id);
                     const normalizedStage = 
                       rawStage === "applied" || rawStage === "ai_scored" ? "resume_review" 
                       : rawStage === "test_completed" ? "video_intro"
+                      : rawStage === "aptitude_test" && hasSubmittedCurrentTest ? "video_intro"
                       : rawStage === "shortlisted" ? "aptitude_test"
                       : rawStage === "interview" ? "hr_interview"
                       : rawStage === "selected" ? "offer_letter"
@@ -256,7 +275,7 @@ const CandidateDashboard = () => {
                           >
                             {stage.label}
                           </span>
-                          {isCurrent && stage.key === "aptitude_test" && (
+                          {isCurrent && stage.key === "aptitude_test" && !hasSubmittedCurrentTest && (
                             <Button
                               size="sm"
                               onClick={() => navigate("/aptitude-test")}

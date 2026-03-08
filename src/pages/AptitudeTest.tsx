@@ -24,6 +24,7 @@ const AptitudeTest = () => {
   // Auth & access
   const [loading, setLoading] = useState(true);
   const [authorized, setAuthorized] = useState(false);
+  const [accessMessage, setAccessMessage] = useState("The aptitude test is not available for you yet. You will receive a notification when HR opens the test for your profile.");
   const [application, setApplication] = useState<any>(null);
   const [candidateId, setCandidateId] = useState("");
   const [questions, setQuestions] = useState<TestQuestion[]>([]);
@@ -67,7 +68,7 @@ const AptitudeTest = () => {
 
       setCandidateId(user.id);
 
-      // Check if already completed
+      // Block if already completed
       const { data: completedApp } = await supabase
         .from("applications")
         .select("id")
@@ -76,9 +77,8 @@ const AptitudeTest = () => {
         .maybeSingle();
 
       if (completedApp) {
-        // Already completed - don't allow retake
+        setAccessMessage("You already submitted this test. Retake is not allowed.");
         setLoading(false);
-        setAuthorized(false);
         return;
       }
 
@@ -90,6 +90,18 @@ const AptitudeTest = () => {
         .maybeSingle();
 
       if (app) {
+        // Also block if answers already exist (submission done but stage not updated)
+        const { count: existingAnswersCount } = await supabase
+          .from("test_answers")
+          .select("id", { count: "exact", head: true })
+          .eq("application_id", app.id);
+
+        if ((existingAnswersCount || 0) > 0) {
+          setAccessMessage("You already submitted this test. Retake is not allowed.");
+          setLoading(false);
+          return;
+        }
+
         setApplication(app);
 
         // Load approved assessment questions
@@ -346,6 +358,18 @@ const AptitudeTest = () => {
     });
     const score = Math.round((correct / totalQ) * 100);
 
+    // Prevent duplicate submission
+    const { count: existingAnswersCount } = await supabase
+      .from("test_answers")
+      .select("id", { count: "exact", head: true })
+      .eq("application_id", application.id);
+
+    if ((existingAnswersCount || 0) > 0) {
+      setPhase("submitted");
+      setSubmitting(false);
+      return;
+    }
+
     // Save answers
     const answerRows = answers.map((ans, i) => ({
       application_id: application.id,
@@ -354,9 +378,14 @@ const AptitudeTest = () => {
       time_spent_seconds: finalTimes[i],
     }));
 
-    await supabase.from("test_answers").insert(answerRows);
+    const { error: answersError } = await supabase.from("test_answers").insert(answerRows);
+    if (answersError) {
+      toast({ title: "Submit failed", description: answersError.message, variant: "destructive" });
+      setSubmitting(false);
+      return;
+    }
 
-    // Update application
+    // Update application stage and score
     await supabase
       .from("applications")
       .update({
@@ -429,7 +458,7 @@ const AptitudeTest = () => {
         <Shield className="h-16 w-16 text-muted-foreground mb-4" />
         <h1 className="text-2xl font-bold text-foreground mb-2">Test Not Available</h1>
         <p className="text-muted-foreground text-center max-w-md">
-          The aptitude test is not available for you yet. You will receive a notification when HR opens the test for your profile.
+          {accessMessage}
         </p>
         <Button onClick={() => navigate("/candidate-dashboard")} variant="outline" className="mt-6">
           Back to Dashboard
