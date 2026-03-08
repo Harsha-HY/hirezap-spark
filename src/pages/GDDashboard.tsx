@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Users, Calendar, Clock, ArrowLeft, Eye, CheckCircle, XCircle, Loader2 } from "lucide-react";
+import { Plus, Users, Calendar, Clock, ArrowLeft, Eye, CheckCircle, XCircle, Loader2, Brain } from "lucide-react";
 import { motion } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";

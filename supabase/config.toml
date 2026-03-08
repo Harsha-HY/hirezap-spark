@@ -17,3 +17,9 @@ verify_jwt = false
 
 [functions.score-technical]
 verify_jwt = false
+
+[functions.suggest-gd-topics]
+verify_jwt = false
+
+[functions.analyze-gd]
+verify_jwt = false
