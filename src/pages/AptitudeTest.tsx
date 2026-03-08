@@ -358,6 +358,18 @@ const AptitudeTest = () => {
     });
     const score = Math.round((correct / totalQ) * 100);
 
+    // Prevent duplicate submission
+    const { count: existingAnswersCount } = await supabase
+      .from("test_answers")
+      .select("id", { count: "exact", head: true })
+      .eq("application_id", application.id);
+
+    if ((existingAnswersCount || 0) > 0) {
+      setPhase("submitted");
+      setSubmitting(false);
+      return;
+    }
+
     // Save answers
     const answerRows = answers.map((ans, i) => ({
       application_id: application.id,
@@ -366,9 +378,14 @@ const AptitudeTest = () => {
       time_spent_seconds: finalTimes[i],
     }));
 
-    await supabase.from("test_answers").insert(answerRows);
+    const { error: answersError } = await supabase.from("test_answers").insert(answerRows);
+    if (answersError) {
+      toast({ title: "Submit failed", description: answersError.message, variant: "destructive" });
+      setSubmitting(false);
+      return;
+    }
 
-    // Update application
+    // Update application stage and score
     await supabase
       .from("applications")
       .update({
