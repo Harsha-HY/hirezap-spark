@@ -38,6 +38,7 @@ const navItems = [
 
 const HRDashboard = () => {
   const navigate = useNavigate();
+  const [activeNav, setActiveNav] = useState("Dashboard");
   const [hrName, setHrName] = useState("");
   const [hrUserId, setHrUserId] = useState("");
   const [companyName, setCompanyName] = useState("");
