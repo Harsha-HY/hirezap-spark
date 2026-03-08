@@ -20,7 +20,7 @@ const stages = [
 ];
 
 const sidebarLinks = [
-  { icon: LayoutDashboard, label: "Dashboard", active: true },
+  { icon: LayoutDashboard, label: "Dashboard" },
   { icon: Briefcase, label: "My Applications" },
   { icon: MessageSquare, label: "Messages" },
   { icon: Settings, label: "Settings" },
