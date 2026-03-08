@@ -364,9 +364,20 @@ const HRCandidatesView = ({ companyId }: Props) => {
           <DialogHeader>
             <DialogTitle>Resume</DialogTitle>
           </DialogHeader>
-          {resumeUrl && (
-            <iframe src={resumeUrl} className="w-full flex-1 rounded-lg border border-border" style={{ height: "calc(85vh - 80px)" }} />
-          )}
+          {resumeUrl && (() => {
+            const isPdf = resumeUrl.toLowerCase().includes('.pdf');
+            const viewerUrl = isPdf 
+              ? resumeUrl 
+              : `https://docs.google.com/gview?url=${encodeURIComponent(resumeUrl)}&embedded=true`;
+            return (
+              <iframe 
+                src={viewerUrl} 
+                className="w-full flex-1 rounded-lg border border-border" 
+                style={{ height: "calc(85vh - 80px)" }}
+                title="Resume Viewer"
+              />
+            );
+          })()}
         </DialogContent>
       </Dialog>
 
