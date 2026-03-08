@@ -330,11 +330,16 @@ const HRCandidatesView = ({ companyId }: Props) => {
                               variant="ghost"
                               size="sm"
                               onClick={() => handleOpenAptitudeTest(app)}
+                              disabled={generatingTestFor === app.id}
                               className="text-purple-500 hover:text-purple-600 gap-1 text-xs"
                               title="Open Aptitude Test"
                             >
-                              <BookOpen className="h-3.5 w-3.5" />
-                              Open Test
+                              {generatingTestFor === app.id ? (
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              ) : (
+                                <BookOpen className="h-3.5 w-3.5" />
+                              )}
+                              {generatingTestFor === app.id ? "Generating..." : "Open Test"}
                             </Button>
                           )}
                           {canViewResults && (
