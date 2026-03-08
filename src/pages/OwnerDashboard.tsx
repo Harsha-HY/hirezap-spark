@@ -22,7 +22,7 @@ interface Company {
 }
 
 const navItems = [
-  { icon: Building2, label: "Companies", active: true },
+  { icon: Building2, label: "Companies" },
   { icon: BarChart3, label: "Analytics" },
   { icon: Shield, label: "Security" },
   { icon: Settings, label: "Settings" },
