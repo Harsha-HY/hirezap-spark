@@ -31,6 +31,7 @@ interface Application {
   test_score: number | null;
   technical_score: number | null;
   code_answers: any;
+  cover_letter: string | null;
 }
 
 interface Props {
@@ -112,6 +113,9 @@ const HRCandidatesView = ({ companyId }: Props) => {
   const [bulkApproving, setBulkApproving] = useState(false);
   const [technicalReportDialog, setTechnicalReportDialog] = useState<any>(null);
   const [technicalAssessment, setTechnicalAssessment] = useState<any>(null);
+  const [detailsDialog, setDetailsDialog] = useState<any>(null);
+  const [detailsPhotoUrl, setDetailsPhotoUrl] = useState<string | null>(null);
+  const [detailsResumeUrl, setDetailsResumeUrl] = useState<string | null>(null);
   const { toast } = useToast();
 
   // Detect current user role and name
@@ -236,6 +240,34 @@ const HRCandidatesView = ({ companyId }: Props) => {
     }
   };
 
+  const handleViewCandidateDetails = async (app: any) => {
+    setDetailsDialog(app);
+    setDetailsPhotoUrl(null);
+    setDetailsResumeUrl(null);
+
+    // Get photo URL
+    if (app.photo_url) {
+      if (app.photo_url.startsWith("http")) {
+        setDetailsPhotoUrl(app.photo_url);
+      } else {
+        const { data: photoData } = supabase.storage.from("photos").getPublicUrl(app.photo_url);
+        if (photoData?.publicUrl) setDetailsPhotoUrl(photoData.publicUrl);
+      }
+    }
+
+    // Get resume signed URL
+    if (app.resume_url) {
+      let storagePath = app.resume_url;
+      if (storagePath.startsWith("http")) {
+        const marker = "/object/public/resumes/";
+        const idx = storagePath.indexOf(marker);
+        if (idx !== -1) storagePath = decodeURIComponent(storagePath.substring(idx + marker.length));
+      }
+      const { data } = await supabase.storage.from("resumes").createSignedUrl(storagePath, 3600);
+      if (data?.signedUrl) setDetailsResumeUrl(data.signedUrl);
+    }
+  };
+
   const handleUpdateStage = async (appId: string, newStage: string) => {
     // Optimistic update — instant UI change
     const appData = applications.find((a) => a.id === appId);
@@ -257,6 +289,31 @@ const HRCandidatesView = ({ companyId }: Props) => {
       toast({ title: "Error", description: error.message, variant: "destructive" });
       fetchApplications(); // revert on error
       return;
+    }
+
+    // Send notification to candidate when hired
+    if (newStage === "hired" && appData) {
+      await supabase.from("notifications").insert({
+        user_id: appData.candidate_id,
+        title: "🎉 Congratulations! You are Hired!",
+        message: `We are thrilled to inform you that you have been selected for the position of ${appData.job_title}. Please check your email for the official offer letter and next steps. Welcome aboard!`,
+      });
+
+      // Trigger hire email edge function
+      supabase.functions.invoke("send-hire-email", {
+        body: { applicationId: appId, candidateId: appData.candidate_id },
+      }).then((res) => {
+        if (res.error) console.error("Hire email error:", res.error);
+      });
+    }
+
+    // Send "Better luck next time" when rejected
+    if (newStage === "rejected" && appData) {
+      await supabase.from("notifications").insert({
+        user_id: appData.candidate_id,
+        title: "Better Luck Next Time 🍀",
+        message: `Thank you for applying for ${appData.job_title}. Unfortunately, we have decided to move forward with other candidates. We wish you all the best in your future endeavors.`,
+      });
     }
 
     await notifyHROfManagerAction(
@@ -795,7 +852,12 @@ const HRCandidatesView = ({ companyId }: Props) => {
                             />
                           )}
                           <div>
-                            <p className="font-medium text-foreground">{app.candidate_name}</p>
+                            <button
+                              onClick={() => handleViewCandidateDetails(app)}
+                              className="font-medium text-foreground hover:text-primary hover:underline cursor-pointer text-left"
+                            >
+                              {app.candidate_name}
+                            </button>
                             <p className="text-xs text-muted-foreground">{app.candidate_email}</p>
                           </div>
                         </div>
@@ -1797,6 +1859,148 @@ const HRCandidatesView = ({ companyId }: Props) => {
               </div>
             );
           })()}
+        </DialogContent>
+      </Dialog>
+
+      {/* Candidate Details Dialog */}
+      <Dialog open={!!detailsDialog} onOpenChange={() => setDetailsDialog(null)}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Candidate Details — {detailsDialog?.candidate_name}</DialogTitle>
+          </DialogHeader>
+          {detailsDialog && (
+            <div className="space-y-6">
+              {/* Photo & Basic Info */}
+              <div className="flex items-start gap-4">
+                {detailsPhotoUrl ? (
+                  <img
+                    src={detailsPhotoUrl}
+                    alt={detailsDialog.candidate_name}
+                    className="h-24 w-24 rounded-xl object-cover border-2 border-border shrink-0"
+                  />
+                ) : (
+                  <div className="h-24 w-24 rounded-xl bg-muted flex items-center justify-center text-muted-foreground text-2xl font-bold shrink-0">
+                    {detailsDialog.candidate_name?.charAt(0)?.toUpperCase()}
+                  </div>
+                )}
+                <div className="flex-1 space-y-1">
+                  <p className="text-lg font-bold text-foreground">{detailsDialog.candidate_name}</p>
+                  <p className="text-sm text-muted-foreground">{detailsDialog.candidate_email}</p>
+                  <p className="text-sm text-muted-foreground">Job: <span className="text-foreground font-medium">{detailsDialog.job_title}</span></p>
+                  <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium mt-1 ${stageBadgeClass[detailsDialog.current_stage] || "bg-muted text-muted-foreground"}`}>
+                    {stageLabel[detailsDialog.current_stage] || detailsDialog.current_stage}
+                  </span>
+                </div>
+              </div>
+
+              {/* Application Details Grid */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                <div className="rounded-lg border border-border bg-muted/50 p-3">
+                  <p className="text-xs text-muted-foreground">Current Company</p>
+                  <p className="text-sm font-medium text-foreground">{detailsDialog.current_company}</p>
+                </div>
+                <div className="rounded-lg border border-border bg-muted/50 p-3">
+                  <p className="text-xs text-muted-foreground">Experience</p>
+                  <p className="text-sm font-medium text-foreground">{detailsDialog.experience_years} years</p>
+                </div>
+                <div className="rounded-lg border border-border bg-muted/50 p-3">
+                  <p className="text-xs text-muted-foreground">Current CTC</p>
+                  <p className="text-sm font-medium text-foreground">₹{detailsDialog.current_ctc?.toLocaleString()} LPA</p>
+                </div>
+                <div className="rounded-lg border border-border bg-muted/50 p-3">
+                  <p className="text-xs text-muted-foreground">Expected CTC</p>
+                  <p className="text-sm font-medium text-foreground">₹{detailsDialog.expected_ctc?.toLocaleString()} LPA</p>
+                </div>
+                <div className="rounded-lg border border-border bg-muted/50 p-3">
+                  <p className="text-xs text-muted-foreground">Notice Period</p>
+                  <p className="text-sm font-medium text-foreground">{detailsDialog.notice_period} days</p>
+                </div>
+                <div className="rounded-lg border border-border bg-muted/50 p-3">
+                  <p className="text-xs text-muted-foreground">Applied On</p>
+                  <p className="text-sm font-medium text-foreground">{new Date(detailsDialog.applied_at).toLocaleDateString()}</p>
+                </div>
+              </div>
+
+              {/* Scores */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="rounded-lg border border-border bg-muted/50 p-3 text-center">
+                  <p className={`text-xl font-bold ${detailsDialog.resume_score !== null ? (detailsDialog.resume_score >= 70 ? "text-primary" : detailsDialog.resume_score >= 50 ? "text-amber-500" : "text-destructive") : "text-muted-foreground"}`}>
+                    {detailsDialog.resume_score ?? "—"}
+                  </p>
+                  <p className="text-xs text-muted-foreground">AI Resume Score</p>
+                </div>
+                <div className="rounded-lg border border-border bg-muted/50 p-3 text-center">
+                  <p className={`text-xl font-bold ${detailsDialog.test_score !== null ? (detailsDialog.test_score >= 70 ? "text-primary" : detailsDialog.test_score >= 50 ? "text-amber-500" : "text-destructive") : "text-muted-foreground"}`}>
+                    {detailsDialog.test_score ?? "—"}
+                  </p>
+                  <p className="text-xs text-muted-foreground">Aptitude Score</p>
+                </div>
+                <div className="rounded-lg border border-border bg-muted/50 p-3 text-center">
+                  <p className={`text-xl font-bold ${detailsDialog.technical_score !== null ? (detailsDialog.technical_score >= 70 ? "text-primary" : detailsDialog.technical_score >= 50 ? "text-amber-500" : "text-destructive") : "text-muted-foreground"}`}>
+                    {detailsDialog.technical_score ?? "—"}
+                  </p>
+                  <p className="text-xs text-muted-foreground">Technical Score</p>
+                </div>
+                <div className="rounded-lg border border-border bg-muted/50 p-3 text-center">
+                  <p className={`text-xl font-bold ${detailsDialog.video_score !== null ? (detailsDialog.video_score >= 70 ? "text-primary" : detailsDialog.video_score >= 50 ? "text-amber-500" : "text-destructive") : "text-muted-foreground"}`}>
+                    {detailsDialog.video_score ?? "—"}
+                  </p>
+                  <p className="text-xs text-muted-foreground">Video Score</p>
+                </div>
+              </div>
+
+              {/* Cover Letter */}
+              {detailsDialog.cover_letter && (
+                <div>
+                  <h3 className="text-sm font-semibold text-foreground mb-2">📝 Cover Letter</h3>
+                  <div className="rounded-lg border border-border bg-muted/30 p-4 text-sm text-foreground whitespace-pre-wrap">
+                    {detailsDialog.cover_letter}
+                  </div>
+                </div>
+              )}
+
+              {/* AI Analysis */}
+              {detailsDialog.ai_analysis && (
+                <div>
+                  <h3 className="text-sm font-semibold text-foreground mb-2">🤖 AI Resume Analysis</h3>
+                  <div className="rounded-lg border border-border bg-muted/30 p-4 text-sm space-y-1">
+                    {typeof detailsDialog.ai_analysis === "object" && (
+                      <>
+                        {detailsDialog.ai_analysis.verdict && (
+                          <p><span className="text-muted-foreground">Verdict:</span> <span className="font-medium capitalize text-foreground">{detailsDialog.ai_analysis.verdict}</span></p>
+                        )}
+                        {detailsDialog.ai_analysis.summary && (
+                          <p className="text-muted-foreground">{detailsDialog.ai_analysis.summary}</p>
+                        )}
+                        {detailsDialog.ai_analysis.strengths && (
+                          <p><span className="text-muted-foreground">Strengths:</span> <span className="text-foreground">{Array.isArray(detailsDialog.ai_analysis.strengths) ? detailsDialog.ai_analysis.strengths.join(", ") : detailsDialog.ai_analysis.strengths}</span></p>
+                        )}
+                        {detailsDialog.ai_analysis.weaknesses && (
+                          <p><span className="text-muted-foreground">Weaknesses:</span> <span className="text-foreground">{Array.isArray(detailsDialog.ai_analysis.weaknesses) ? detailsDialog.ai_analysis.weaknesses.join(", ") : detailsDialog.ai_analysis.weaknesses}</span></p>
+                        )}
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Resume Link */}
+              {detailsResumeUrl && (
+                <div>
+                  <h3 className="text-sm font-semibold text-foreground mb-2">📄 Resume</h3>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => window.open(detailsResumeUrl, "_blank")}
+                    className="gap-2"
+                  >
+                    <FileText className="h-4 w-4" />
+                    View / Download Resume
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </motion.div>
