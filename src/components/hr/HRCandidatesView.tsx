@@ -19,6 +19,9 @@ interface Application {
   resume_url: string | null;
   photo_url: string | null;
   ai_analysis: any;
+  video_url: string | null;
+  video_score: number | null;
+  video_analysis: any;
   experience_years: number;
   current_company: string;
   current_ctc: number;
