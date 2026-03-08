@@ -38,10 +38,15 @@ const AptitudeTest = () => {
   const [timePerQuestion, setTimePerQuestion] = useState<number[]>([]);
   const [violations, setViolations] = useState(0);
   const [submitting, setSubmitting] = useState(false);
+  const [cameraAlert, setCameraAlert] = useState(false);
 
   // Webcam
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const prevFrameRef = useRef<ImageData | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
 
   // Check authorization and load questions from assessments
   useEffect(() => {
@@ -61,6 +66,21 @@ const AptitudeTest = () => {
       }
 
       setCandidateId(user.id);
+
+      // Check if already completed
+      const { data: completedApp } = await supabase
+        .from("applications")
+        .select("id")
+        .eq("candidate_id", user.id)
+        .eq("current_stage", "test_completed")
+        .maybeSingle();
+
+      if (completedApp) {
+        // Already completed - don't allow retake
+        setLoading(false);
+        setAuthorized(false);
+        return;
+      }
 
       const { data: app } = await supabase
         .from("applications")
@@ -189,6 +209,65 @@ const AptitudeTest = () => {
     });
   };
 
+  // Motion & Sound detection
+  useEffect(() => {
+    if (phase !== "test") return;
+
+    const canvas = document.createElement("canvas");
+    canvas.width = 160;
+    canvas.height = 120;
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
+    canvasRef.current = canvas;
+
+    let alertTimeout: ReturnType<typeof setTimeout> | null = null;
+
+    const detectInterval = setInterval(() => {
+      let detected = false;
+
+      // Motion detection via frame diff
+      if (videoRef.current && ctx && videoRef.current.readyState >= 2) {
+        ctx.drawImage(videoRef.current, 0, 0, 160, 120);
+        const currentFrame = ctx.getImageData(0, 0, 160, 120);
+
+        if (prevFrameRef.current) {
+          let diffSum = 0;
+          const prev = prevFrameRef.current.data;
+          const curr = currentFrame.data;
+          for (let i = 0; i < curr.length; i += 16) {
+            diffSum += Math.abs(curr[i] - prev[i]);
+          }
+          const avgDiff = diffSum / (curr.length / 16);
+          // High motion threshold — someone walking by
+          if (avgDiff > 25) {
+            detected = true;
+          }
+        }
+        prevFrameRef.current = currentFrame;
+      }
+
+      // Sound detection
+      if (analyserRef.current) {
+        const dataArray = new Uint8Array(analyserRef.current.frequencyBinCount);
+        analyserRef.current.getByteFrequencyData(dataArray);
+        const avg = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
+        if (avg > 30) {
+          detected = true;
+        }
+      }
+
+      if (detected) {
+        setCameraAlert(true);
+        if (alertTimeout) clearTimeout(alertTimeout);
+        alertTimeout = setTimeout(() => setCameraAlert(false), 2000);
+      }
+    }, 500);
+
+    return () => {
+      clearInterval(detectInterval);
+      if (alertTimeout) clearTimeout(alertTimeout);
+    };
+  }, [phase]);
+
   const startTest = async () => {
     // Request fullscreen
     try {
@@ -197,15 +276,27 @@ const AptitudeTest = () => {
       console.warn("Fullscreen not supported");
     }
 
-    // Start webcam
+    // Start webcam with audio
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
       streamRef.current = stream;
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
+        videoRef.current.onloadedmetadata = () => {
+          videoRef.current?.play();
+        };
       }
+
+      // Setup audio analyser for sound detection
+      const audioCtx = new AudioContext();
+      const source = audioCtx.createMediaStreamSource(stream);
+      const analyser = audioCtx.createAnalyser();
+      analyser.fftSize = 256;
+      source.connect(analyser);
+      audioContextRef.current = audioCtx;
+      analyserRef.current = analyser;
     } catch (e) {
-      toast({ title: "Camera Required", description: "Please enable your camera to take the test.", variant: "destructive" });
+      toast({ title: "Camera & Mic Required", description: "Please enable camera and microphone to take the test.", variant: "destructive" });
       return;
     }
 
@@ -310,8 +401,9 @@ const AptitudeTest = () => {
     // Exit fullscreen
     try { await document.exitFullscreen(); } catch (e) {}
 
-    // Stop webcam
+    // Stop webcam & audio
     streamRef.current?.getTracks().forEach((t) => t.stop());
+    audioContextRef.current?.close();
 
     setPhase("submitted");
     setSubmitting(false);
@@ -556,16 +648,23 @@ const AptitudeTest = () => {
 
       {/* Webcam preview */}
       <div className="fixed bottom-4 right-4 z-50">
-        <div className="w-40 h-30 rounded-xl overflow-hidden border-2 border-primary/30 shadow-xl bg-black">
+        <div className={`w-44 rounded-xl overflow-hidden shadow-xl transition-all duration-300 ${
+          cameraAlert
+            ? "border-4 border-destructive shadow-destructive/30 animate-pulse"
+            : "border-2 border-primary/30"
+        }`}>
           <video
             ref={videoRef}
             autoPlay
             muted
             playsInline
-            className="w-full h-full object-cover"
+            className="w-full h-auto object-cover rounded-lg"
+            style={{ minHeight: "120px" }}
           />
         </div>
-        <p className="text-[10px] text-muted-foreground text-center mt-1">📹 Camera ON</p>
+        <p className={`text-[10px] text-center mt-1 font-medium ${cameraAlert ? "text-destructive" : "text-muted-foreground"}`}>
+          {cameraAlert ? "⚠️ Motion/Sound Detected!" : "📹 Camera ON"}
+        </p>
       </div>
     </div>
   );
