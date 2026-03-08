@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { FileText, ArrowRight, XCircle, BookOpen, Eye, Loader2, Video, Play, Code2, Filter, CheckCheck } from "lucide-react";
+import { FileText, ArrowRight, XCircle, BookOpen, Eye, Loader2, Video, Play, Code2, Filter, CheckCheck, Users } from "lucide-react";
 import { Slider } from "@/components/ui/slider";
 import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
@@ -37,7 +37,7 @@ interface Props {
   companyId: string;
 }
 
-const stageFlow = ["applied", "ai_scored", "shortlisted", "aptitude_test", "test_completed", "video_intro", "video_submitted", "technical_round", "technical_test", "technical_completed", "group_discussion", "interview", "selected", "rejected"];
+const stageFlow = ["applied", "ai_scored", "shortlisted", "aptitude_test", "test_completed", "video_intro", "video_submitted", "technical_round", "technical_test", "technical_completed", "group_discussion", "gd_completed", "interview", "selected", "rejected"];
 
 const stageLabel: Record<string, string> = {
   applied: "Applied",
@@ -51,6 +51,7 @@ const stageLabel: Record<string, string> = {
   technical_test: "Technical Test",
   technical_completed: "Technical Done",
   group_discussion: "Group Discussion",
+  gd_completed: "GD Completed",
   interview: "HR Interview",
   selected: "Selected",
   rejected: "Rejected",
@@ -68,6 +69,7 @@ const stageBadgeClass: Record<string, string> = {
   technical_test: "bg-orange-500/10 text-orange-500",
   technical_completed: "bg-teal-500/10 text-teal-500",
   group_discussion: "bg-cyan-500/10 text-cyan-500",
+  gd_completed: "bg-cyan-500/10 text-cyan-500",
   interview: "bg-indigo-500/10 text-indigo-500",
   selected: "bg-primary/10 text-primary",
   rejected: "bg-destructive/10 text-destructive",
@@ -508,7 +510,7 @@ const HRCandidatesView = ({ companyId }: Props) => {
     if (idx === -1 || idx >= stageFlow.length - 2) return null;
     const next = stageFlow[idx + 1];
     // These stages are handled by specific buttons, not generic "next"
-    if (["aptitude_test", "test_completed", "video_intro", "video_submitted", "technical_round", "technical_test"].includes(next)) return null;
+    if (["aptitude_test", "test_completed", "video_intro", "video_submitted", "technical_round", "technical_test", "technical_completed", "group_discussion", "gd_completed"].includes(next)) return null;
     return next;
   };
 
@@ -620,6 +622,7 @@ const HRCandidatesView = ({ companyId }: Props) => {
                   const canViewVideo = (app as any).video_url || app.current_stage === "video_submitted";
                   const canOpenTechnical = app.current_stage === "video_submitted";
                   const canViewTechReport = app.technical_score !== null || app.current_stage === "technical_completed";
+                  const canMoveToGD = app.current_stage === "technical_completed";
 
                   return (
                     <TableRow key={app.id}>
@@ -754,6 +757,18 @@ const HRCandidatesView = ({ companyId }: Props) => {
                             >
                               <Eye className="h-3.5 w-3.5" />
                               Tech Report
+                            </Button>
+                          )}
+                          {canMoveToGD && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleUpdateStage(app.id, "group_discussion")}
+                              className="text-cyan-500 hover:text-cyan-600 gap-1 text-xs"
+                              title="Move to Group Discussion"
+                            >
+                              <Users className="h-3.5 w-3.5" />
+                              Move to GD
                             </Button>
                           )}
                           {nextStage && app.current_stage !== "rejected" && app.current_stage !== "selected" && (

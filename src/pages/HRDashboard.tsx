@@ -29,6 +29,7 @@ const navItems = [
   { icon: LayoutDashboard, label: "Dashboard" },
   { icon: Briefcase, label: "Jobs" },
   { icon: Users, label: "Candidates" },
+  { icon: Users, label: "Group Discussion" },
   { icon: Calendar, label: "Interviews" },
   { icon: MessageSquare, label: "Messages" },
   { icon: BarChart3, label: "Analytics" },
@@ -182,6 +183,9 @@ const HRDashboard = () => {
         return <HRJobsView jobs={jobs} managers={managers} onPostJob={() => setPanelOpen(true)} onJobUpdated={fetchData} />;
       case "Candidates":
         return <HRCandidatesView companyId={companyId} />;
+      case "Group Discussion":
+        navigate("/gd-dashboard");
+        return null;
       case "Interviews":
         return (
           <div className="rounded-xl border border-border bg-card p-8 text-center">
