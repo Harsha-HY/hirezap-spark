@@ -29,6 +29,7 @@ const navItems = [
   { icon: LayoutDashboard, label: "Dashboard" },
   { icon: Briefcase, label: "Jobs" },
   { icon: Users, label: "Candidates" },
+  { icon: Users, label: "Group Discussion" },
   { icon: Calendar, label: "Interviews" },
   { icon: MessageSquare, label: "Messages" },
   { icon: BarChart3, label: "Analytics" },
