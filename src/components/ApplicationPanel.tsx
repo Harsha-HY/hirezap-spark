@@ -221,11 +221,22 @@ const ApplicationPanel = ({ open, onOpenChange, job, onSuccess }: ApplicationPan
                 className="hidden"
                 onChange={(e) => {
                   const file = e.target.files?.[0];
-                  if (file && file.size > 5 * 1024 * 1024) {
-                    toast({ title: "File too large", description: "Max 5MB allowed", variant: "destructive" });
+                  if (!file) {
+                    setResumeFile(null);
                     return;
                   }
-                  setResumeFile(file || null);
+                  const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+                  if (!isPdf) {
+                    toast({ title: "Invalid file type", description: "Only PDF resumes are allowed", variant: "destructive" });
+                    e.currentTarget.value = "";
+                    return;
+                  }
+                  if (file.size > 5 * 1024 * 1024) {
+                    toast({ title: "File too large", description: "Max 5MB allowed", variant: "destructive" });
+                    e.currentTarget.value = "";
+                    return;
+                  }
+                  setResumeFile(file);
                 }}
               />
             </label>
