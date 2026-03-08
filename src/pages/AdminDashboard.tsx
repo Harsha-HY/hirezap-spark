@@ -94,6 +94,13 @@ const AdminDashboard = () => {
     setPanelOpen(true);
   };
 
+  const handleNavClick = (label: string) => {
+    setActiveNav(label);
+    if (label === "HR Managers") document.getElementById("hr-managers-section")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    if (label === "Hiring Managers") document.getElementById("hiring-managers-section")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    if (label === "Dashboard") window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
   const stats = [
     { icon: UserCheck, label: "Total HR Managers", value: hrManagers.length, color: "text-primary" },
     { icon: UserCog, label: "Total Hiring Managers", value: hiringManagers.length, color: "text-blue-400" },
