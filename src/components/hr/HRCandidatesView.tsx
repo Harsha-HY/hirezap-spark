@@ -616,6 +616,31 @@ const HRCandidatesView = ({ companyId }: Props) => {
     (a) => a.current_stage === "video_submitted"
   );
 
+  // Candidates eligible for bulk move to GD
+  const gdEligibleApps = applications.filter(
+    (a) => a.current_stage === "technical_completed"
+  );
+
+  const [bulkMovingToGD, setBulkMovingToGD] = useState(false);
+
+  const handleBulkMoveToGD = async () => {
+    if (gdEligibleApps.length === 0) return;
+    setBulkMovingToGD(true);
+    try {
+      for (const app of gdEligibleApps) {
+        await supabase.from("applications").update({ current_stage: "group_discussion" }).eq("id", app.id);
+      }
+      toast({
+        title: `✅ ${gdEligibleApps.length} candidates moved to Group Discussion`,
+        description: "Now schedule a GD from the GD Dashboard.",
+      });
+      fetchApplications();
+    } catch (e: any) {
+      toast({ title: "Error", description: e.message, variant: "destructive" });
+    }
+    setBulkMovingToGD(false);
+  };
+
   const handleBulkGenerateAptitude = async () => {
     if (aptitudeEligibleApps.length === 0) return;
     setBulkGeneratingAptitude(true);
