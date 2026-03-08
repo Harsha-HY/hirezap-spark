@@ -406,6 +406,27 @@ const HRDashboard = () => {
         managers={managers}
         onJobCreated={fetchData}
       />
+
+      {/* Floating notification popup */}
+      <AnimatePresence>
+        {latestNotif && (
+          <motion.div
+            initial={{ opacity: 0, y: 50, x: 20 }}
+            animate={{ opacity: 1, y: 0, x: 0 }}
+            exit={{ opacity: 0, y: 50 }}
+            className="fixed bottom-6 right-6 z-50 w-80 rounded-xl border border-primary/30 bg-card shadow-2xl shadow-primary/10 p-4"
+          >
+            <div className="flex items-start gap-3">
+              <span className="text-xl">🔔</span>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-foreground">{latestNotif.title}</p>
+                <p className="text-xs text-muted-foreground mt-1 line-clamp-3">{latestNotif.message}</p>
+              </div>
+              <button onClick={() => setLatestNotif(null)} className="text-muted-foreground hover:text-foreground text-xs">✕</button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
