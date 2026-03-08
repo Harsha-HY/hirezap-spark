@@ -17,6 +17,7 @@ import VideoIntro from "./pages/VideoIntro";
 import ReviewAssessment from "./pages/ReviewAssessment";
 import ReviewTechnical from "./pages/ReviewTechnical";
 import TechnicalTest from "./pages/TechnicalTest";
+import GDDashboard from "./pages/GDDashboard";
 import NotFound from "./pages/NotFound";
 import ProtectedRoute from "./components/ProtectedRoute";
 
