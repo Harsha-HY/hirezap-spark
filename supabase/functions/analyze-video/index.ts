@@ -203,15 +203,7 @@ Return ONLY valid JSON with these exact fields:
       .update({ video_score: analysis.overall_score, video_analysis: analysis })
       .eq("id", application.id);
 
-    // Delete video from storage after successful analysis
-    if (application.video_url) {
-      const { error: delErr } = await supabase.storage.from("videos").remove([application.video_url]);
-      if (delErr) console.error("Video cleanup error:", delErr);
-      else console.log("Video deleted from storage:", application.video_url);
 
-      // Clear the video_url from DB since file is gone
-      await supabase.from("applications").update({ video_url: null }).eq("id", application.id);
-    }
 
     console.log("Video analysis complete for application:", application.id);
   } catch (err) {

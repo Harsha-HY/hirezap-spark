@@ -214,15 +214,7 @@ Return ONLY a valid JSON response with these exact fields:
       throw new Error("Failed to save score: " + updateErr.message);
     }
 
-    // Delete resume from storage after successful scoring
-    if (application.resume_url && !application.resume_url.startsWith("http")) {
-      const { error: delErr } = await supabase.storage.from("resumes").remove([application.resume_url]);
-      if (delErr) console.error("Resume cleanup error:", delErr);
-      else console.log("Resume deleted from storage:", application.resume_url);
 
-      // Clear resume_url since file is gone
-      await supabase.from("applications").update({ resume_url: null }).eq("id", applicationId);
-    }
 
     // Find HR who posted the job to notify them
     const { data: hrUser } = await supabase
