@@ -482,7 +482,19 @@ const HRCandidatesView = ({ companyId }: Props) => {
     setGeneratingTechnicalFor(null);
   };
 
-  const getVerdict = (analysis: any): string => {
+  const handleViewTechReport = async (app: any) => {
+    setTechnicalReportDialog(app);
+    setTechnicalAssessment(null);
+    // Fetch the technical assessment questions
+    const { data: assessment } = await supabase
+      .from("assessments")
+      .select("questions")
+      .eq("application_id", app.id)
+      .eq("type", "technical")
+      .maybeSingle();
+    setTechnicalAssessment(assessment?.questions || null);
+  };
+
     if (!analysis) return "—";
     if (typeof analysis === "object" && analysis.verdict) return analysis.verdict;
     return "—";
