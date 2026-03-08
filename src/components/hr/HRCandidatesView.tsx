@@ -315,9 +315,18 @@ const HRCandidatesView = ({ companyId }: Props) => {
                   return (
                     <TableRow key={app.id}>
                       <TableCell>
-                        <div>
-                          <p className="font-medium text-foreground">{app.candidate_name}</p>
-                          <p className="text-xs text-muted-foreground">{app.candidate_email}</p>
+                        <div className="flex items-center gap-2">
+                          {app.photo_url && (
+                            <img
+                              src={app.photo_url.startsWith("http") ? app.photo_url : `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/photos/${app.photo_url}`}
+                              alt=""
+                              className="h-8 w-8 rounded-full object-cover border border-border shrink-0"
+                            />
+                          )}
+                          <div>
+                            <p className="font-medium text-foreground">{app.candidate_name}</p>
+                            <p className="text-xs text-muted-foreground">{app.candidate_email}</p>
+                          </div>
                         </div>
                       </TableCell>
                       <TableCell className="text-sm">{app.job_title}</TableCell>
