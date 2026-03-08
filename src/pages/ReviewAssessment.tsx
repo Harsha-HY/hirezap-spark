@@ -348,7 +348,7 @@ const ReviewAssessment = () => {
       <div className="sticky top-0 z-20 border-b border-border bg-background/80 backdrop-blur-md px-6 py-4">
         <div className="max-w-5xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="sm" onClick={() => navigate("/hr-dashboard")}>
+            <Button variant="ghost" size="sm" onClick={() => navigate(userRole === "manager" ? "/manager-dashboard" : "/hr-dashboard")}>
               <ArrowLeft className="h-4 w-4 mr-1" /> Back
             </Button>
             <div>
