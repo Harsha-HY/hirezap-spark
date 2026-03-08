@@ -29,6 +29,8 @@ interface Application {
   notice_period: number;
   applied_at: string;
   test_score: number | null;
+  technical_score: number | null;
+  code_answers: any;
 }
 
 interface Props {
