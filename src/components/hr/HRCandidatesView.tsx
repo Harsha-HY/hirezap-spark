@@ -86,6 +86,9 @@ const HRCandidatesView = ({ companyId }: Props) => {
   const [videoSignedUrl, setVideoSignedUrl] = useState<string | null>(null);
   const [currentUserRole, setCurrentUserRole] = useState<string>("hr");
   const [currentUserName, setCurrentUserName] = useState<string>("");
+  const [cutoffDialogOpen, setCutoffDialogOpen] = useState(false);
+  const [cutoffScore, setCutoffScore] = useState(60);
+  const [bulkApproving, setBulkApproving] = useState(false);
   const { toast } = useToast();
 
   // Detect current user role and name
