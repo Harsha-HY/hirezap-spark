@@ -72,7 +72,8 @@ const AddJobPanel = ({ open, onOpenChange, companyId, hrUserId, managers, onJobC
       posted_by: hrUserId,
       company_id: companyId,
       status: "open",
-    });
+      aptitude_cutoff: form.aptitudeCutoff,
+    } as any);
 
     if (error) {
       toast({ title: "Failed to post job", description: error.message, variant: "destructive" });
