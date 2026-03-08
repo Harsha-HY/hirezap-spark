@@ -340,7 +340,6 @@ const GDDashboard = () => {
                               🔗 Meeting Link: {(gd as any).meeting_link}
                             </a>
                           )}
-                          </div>
                           {gdGroups.length > 0 && (
                             <div className="flex gap-2 mt-2">
                               {gdGroups.map(g => (
