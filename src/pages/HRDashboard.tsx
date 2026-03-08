@@ -188,13 +188,7 @@ const HRDashboard = () => {
         navigate("/gd-dashboard");
         return null;
       case "Interviews":
-        return (
-          <div className="rounded-xl border border-border bg-card p-8 text-center">
-            <Calendar className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <h2 className="text-lg font-semibold text-foreground">Interviews</h2>
-            <p className="text-sm text-muted-foreground mt-2">Interview scheduling module coming soon.</p>
-          </div>
-        );
+        return <HRInterviewsView companyId={companyId} />;
       case "Messages":
         return (
           <div className="rounded-xl border border-border bg-card p-8 text-center">

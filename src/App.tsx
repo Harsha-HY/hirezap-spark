@@ -124,6 +124,14 @@ const App = () => (
               </ProtectedRoute>
             }
           />
+          <Route
+            path="/schedule-interview"
+            element={
+              <ProtectedRoute requiredRole={["hr", "manager"]}>
+                <ScheduleInterview />
+              </ProtectedRoute>
+            }
+          />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
