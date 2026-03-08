@@ -458,6 +458,7 @@ const HRCandidatesView = ({ companyId }: Props) => {
                   const canViewResults = app.current_stage === "test_completed" || app.test_score !== null;
                   const canOpenVideo = app.current_stage === "test_completed";
                   const canViewVideo = (app as any).video_url || app.current_stage === "video_submitted";
+                  const canOpenTechnical = app.current_stage === "video_submitted";
 
                   return (
                     <TableRow key={app.id}>
