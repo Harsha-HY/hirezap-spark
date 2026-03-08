@@ -74,7 +74,43 @@ const HRCandidatesView = ({ companyId }: Props) => {
   const [generatingTestFor, setGeneratingTestFor] = useState<string | null>(null);
   const [videoDialog, setVideoDialog] = useState<any>(null);
   const [videoSignedUrl, setVideoSignedUrl] = useState<string | null>(null);
+  const [currentUserRole, setCurrentUserRole] = useState<string>("hr");
+  const [currentUserName, setCurrentUserName] = useState<string>("");
   const { toast } = useToast();
+
+  // Detect current user role and name
+  useEffect(() => {
+    (async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      const { data } = await supabase.from("users").select("role, full_name").eq("user_id", session.user.id).maybeSingle();
+      if (data) {
+        setCurrentUserRole(data.role);
+        setCurrentUserName(data.full_name);
+      }
+    })();
+  }, []);
+
+  // Notify HR users when a manager takes an action
+  const notifyHROfManagerAction = async (title: string, message: string) => {
+    if (currentUserRole !== "manager") return;
+    // Get all HR users in this company
+    const { data: hrUsers } = await supabase
+      .from("users")
+      .select("id")
+      .eq("role", "hr")
+      .eq("company_id", companyId);
+    if (!hrUsers) return;
+    const inserts = hrUsers.map((hr) => ({
+      user_id: hr.id,
+      title,
+      message,
+    }));
+    if (inserts.length > 0) {
+      await supabase.from("notifications").insert(inserts);
+    }
+  };
+
 
   const fetchApplications = async () => {
     setLoading(true);
