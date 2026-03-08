@@ -217,15 +217,27 @@ const AptitudeTest = () => {
       console.warn("Fullscreen not supported");
     }
 
-    // Start webcam
+    // Start webcam with audio
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
       streamRef.current = stream;
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
+        videoRef.current.onloadedmetadata = () => {
+          videoRef.current?.play();
+        };
       }
+
+      // Setup audio analyser for sound detection
+      const audioCtx = new AudioContext();
+      const source = audioCtx.createMediaStreamSource(stream);
+      const analyser = audioCtx.createAnalyser();
+      analyser.fftSize = 256;
+      source.connect(analyser);
+      audioContextRef.current = audioCtx;
+      analyserRef.current = analyser;
     } catch (e) {
-      toast({ title: "Camera Required", description: "Please enable your camera to take the test.", variant: "destructive" });
+      toast({ title: "Camera & Mic Required", description: "Please enable camera and microphone to take the test.", variant: "destructive" });
       return;
     }
 
