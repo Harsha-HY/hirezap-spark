@@ -40,6 +40,7 @@ const AptitudeTest = () => {
   const [violations, setViolations] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [cameraAlert, setCameraAlert] = useState(false);
+  const [cameraCautionText, setCameraCautionText] = useState("Monitoring environment");
 
   // Webcam
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -48,6 +49,7 @@ const AptitudeTest = () => {
   const prevFrameRef = useRef<ImageData | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
+  const violationCooldownRef = useRef<Record<string, number>>({});
 
   // Check authorization and load questions from assessments
   useEffect(() => {
@@ -232,9 +234,20 @@ const AptitudeTest = () => {
     canvasRef.current = canvas;
 
     let alertTimeout: ReturnType<typeof setTimeout> | null = null;
+    let motionStreak = 0;
+    let soundStreak = 0;
+
+    const maybeRecordViolation = async (type: string, description: string, cooldownMs = 12000) => {
+      const now = Date.now();
+      const lastLogged = violationCooldownRef.current[type] ?? 0;
+      if (now - lastLogged < cooldownMs) return;
+      violationCooldownRef.current[type] = now;
+      await recordViolation(type, description);
+    };
 
     const detectInterval = setInterval(() => {
-      let detected = false;
+      let motionDetected = false;
+      let soundDetected = false;
 
       // Motion detection via frame diff
       if (videoRef.current && ctx && videoRef.current.readyState >= 2) {
@@ -249,10 +262,8 @@ const AptitudeTest = () => {
             diffSum += Math.abs(curr[i] - prev[i]);
           }
           const avgDiff = diffSum / (curr.length / 16);
-          // High motion threshold — someone walking by
-          if (avgDiff > 25) {
-            detected = true;
-          }
+          motionStreak = avgDiff > 25 ? motionStreak + 1 : Math.max(0, motionStreak - 1);
+          motionDetected = motionStreak >= 3;
         }
         prevFrameRef.current = currentFrame;
       }
@@ -262,41 +273,81 @@ const AptitudeTest = () => {
         const dataArray = new Uint8Array(analyserRef.current.frequencyBinCount);
         analyserRef.current.getByteFrequencyData(dataArray);
         const avg = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
-        if (avg > 30) {
-          detected = true;
-        }
+        soundStreak = avg > 30 ? soundStreak + 1 : Math.max(0, soundStreak - 1);
+        soundDetected = soundStreak >= 3;
       }
 
-      if (detected) {
+      if (motionDetected || soundDetected) {
+        const possiblePhone = motionDetected && soundDetected;
+
         setCameraAlert(true);
+        setCameraCautionText(
+          possiblePhone
+            ? "Caution: possible external device/activity detected"
+            : motionDetected
+            ? "Caution: suspicious movement detected"
+            : "Caution: suspicious sound detected"
+        );
+
         if (alertTimeout) clearTimeout(alertTimeout);
-        alertTimeout = setTimeout(() => setCameraAlert(false), 2000);
+        alertTimeout = setTimeout(() => {
+          setCameraAlert(false);
+          setCameraCautionText("Monitoring environment");
+        }, 2200);
+
+        if (motionDetected) {
+          void maybeRecordViolation("motion_detected", `Suspicious movement detected near candidate at question ${currentQ + 1}`);
+        }
+
+        if (soundDetected) {
+          void maybeRecordViolation("sound_detected", `Suspicious sound detected near candidate at question ${currentQ + 1}`);
+        }
+
+        if (possiblePhone) {
+          void maybeRecordViolation(
+            "possible_phone_usage",
+            `Simultaneous motion and sound spikes indicate possible external device usage at question ${currentQ + 1}`,
+            18000
+          );
+        }
       }
     }, 500);
 
     return () => {
       clearInterval(detectInterval);
       if (alertTimeout) clearTimeout(alertTimeout);
+      prevFrameRef.current = null;
+      setCameraAlert(false);
+      setCameraCautionText("Monitoring environment");
     };
-  }, [phase]);
+  }, [phase, currentQ]);
 
   const startTest = async () => {
-    // Request fullscreen
     try {
-      await document.documentElement.requestFullscreen();
-    } catch (e) {
-      console.warn("Fullscreen not supported");
-    }
+      // CRITICAL: call getUserMedia directly in click handler chain
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: "user",
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+        },
+        audio: true,
+      });
 
-    // Start webcam with audio
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
       streamRef.current = stream;
+
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
-        videoRef.current.onloadedmetadata = () => {
-          videoRef.current?.play();
-        };
+        videoRef.current.muted = true;
+        videoRef.current.playsInline = true;
+        await videoRef.current.play().catch(() => undefined);
+      }
+
+      // Request fullscreen after media starts
+      try {
+        await document.documentElement.requestFullscreen();
+      } catch (e) {
+        console.warn("Fullscreen not supported");
       }
 
       // Setup audio analyser for sound detection
@@ -443,6 +494,13 @@ const AptitudeTest = () => {
     const sec = s % 60;
     return `${m.toString().padStart(2, "0")}:${sec.toString().padStart(2, "0")}`;
   };
+
+  useEffect(() => {
+    return () => {
+      streamRef.current?.getTracks().forEach((t) => t.stop());
+      void audioContextRef.current?.close();
+    };
+  }, []);
 
   if (loading) {
     return (
@@ -675,25 +733,28 @@ const AptitudeTest = () => {
         </div>
       </div>
 
-      {/* Webcam preview */}
+      {/* Hidden webcam feed used only for proctoring analysis */}
+      <video
+        ref={videoRef}
+        autoPlay
+        muted
+        playsInline
+        className="fixed -left-[9999px] -top-[9999px] h-px w-px opacity-0 pointer-events-none"
+      />
+
+      {/* Candidate-facing caution status (no live camera shown) */}
       <div className="fixed bottom-4 right-4 z-50">
-        <div className={`w-44 rounded-xl overflow-hidden shadow-xl transition-all duration-300 ${
-          cameraAlert
-            ? "border-4 border-destructive shadow-destructive/30 animate-pulse"
-            : "border-2 border-primary/30"
-        }`}>
-          <video
-            ref={videoRef}
-            autoPlay
-            muted
-            playsInline
-            className="w-full h-auto object-cover rounded-lg"
-            style={{ minHeight: "120px" }}
-          />
+        <div
+          className={`rounded-xl border px-4 py-2 shadow-xl transition-all duration-300 ${
+            cameraAlert
+              ? "border-destructive bg-destructive/10 text-destructive animate-pulse"
+              : "border-border bg-card text-muted-foreground"
+          }`}
+        >
+          <p className="text-xs font-medium">
+            {cameraAlert ? `⚠️ ${cameraCautionText}` : "🛡️ Proctoring active"}
+          </p>
         </div>
-        <p className={`text-[10px] text-center mt-1 font-medium ${cameraAlert ? "text-destructive" : "text-muted-foreground"}`}>
-          {cameraAlert ? "⚠️ Motion/Sound Detected!" : "📹 Camera ON"}
-        </p>
       </div>
     </div>
   );
