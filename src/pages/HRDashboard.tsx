@@ -160,6 +160,17 @@ const HRDashboard = () => {
     navigate("/login");
   };
 
+  const handleNavClick = (label: string) => {
+    setActiveNav(label);
+    if (label === "Jobs") {
+      document.getElementById("jobs-section")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
+    if (label === "Dashboard") {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  };
+
   const getManagerName = (managerId: string | null) => {
     if (!managerId) return "—";
     return managers.find(m => m.id === managerId)?.full_name || "—";
