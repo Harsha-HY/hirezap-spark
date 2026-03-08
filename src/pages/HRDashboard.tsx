@@ -43,6 +43,8 @@ const HRDashboard = () => {
   const [companyName, setCompanyName] = useState("");
   const [companyId, setCompanyId] = useState("");
   const [jobs, setJobs] = useState<JobRow[]>([]);
+  const [totalApplications, setTotalApplications] = useState(0);
+  const [shortlistedCount, setShortlistedCount] = useState(0);
   const [managers, setManagers] = useState<{ id: string; full_name: string }[]>([]);
   const [panelOpen, setPanelOpen] = useState(false);
   const [notifications, setNotifications] = useState<{ id: string; title: string; message: string; created_at: string; read: boolean }[]>([]);
