@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
-import { ArrowLeft, Check, Pencil, RefreshCw, Trash2, Plus, Loader2 } from "lucide-react";
+import { ArrowLeft, Check, Pencil, RefreshCw, Trash2, Plus, Loader2, Upload, FileUp } from "lucide-react";
 
 interface Question {
   question_number: number;
@@ -43,6 +43,8 @@ const ReviewAssessment = () => {
   const [approving, setApproving] = useState(false);
   const [regeneratingAll, setRegeneratingAll] = useState(false);
   const [regeneratingIdx, setRegeneratingIdx] = useState<string | null>(null);
+  const [uploadingPdf, setUploadingPdf] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Edit dialog
   const [editDialog, setEditDialog] = useState<{ sectionIdx: number; questionIdx: number } | null>(null);
@@ -206,6 +208,81 @@ const ReviewAssessment = () => {
     setRegeneratingAll(false);
   };
 
+  const handleUploadPdf = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.name.toLowerCase().endsWith(".pdf")) {
+      toast({ title: "Invalid File", description: "Please upload a PDF file.", variant: "destructive" });
+      return;
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      toast({ title: "File Too Large", description: "Maximum file size is 10MB.", variant: "destructive" });
+      return;
+    }
+
+    setUploadingPdf(true);
+    toast({ title: "📄 Processing PDF...", description: "AI is extracting and converting questions from your PDF." });
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      if (assessment?.job_id) formData.append("jobId", assessment.job_id);
+
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/parse-pdf-questions`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          },
+          body: formData,
+        }
+      );
+
+      if (!response.ok) {
+        const errData = await response.json();
+        throw new Error(errData.error || "Failed to process PDF");
+      }
+
+      const data = await response.json();
+
+      if (data?.questions?.sections) {
+        // Merge uploaded questions into existing sections or replace
+        const newSections = [...sections];
+        for (const uploadedSection of data.questions.sections) {
+          const existingIdx = newSections.findIndex(
+            (s) => s.name.toLowerCase() === uploadedSection.name.toLowerCase()
+          );
+          if (existingIdx !== -1) {
+            // Add to existing section
+            const startNum = newSections[existingIdx].questions.length + 1;
+            const numberedQuestions = uploadedSection.questions.map((q: Question, i: number) => ({
+              ...q,
+              question_number: startNum + i,
+            }));
+            newSections[existingIdx].questions.push(...numberedQuestions);
+          } else {
+            // Add as new section
+            newSections.push(uploadedSection);
+          }
+        }
+        await saveQuestions(newSections);
+        toast({
+          title: "✅ PDF Questions Added!",
+          description: `${data.questions.sections.reduce((sum: number, s: any) => sum + s.questions.length, 0)} questions extracted and added.`,
+        });
+      }
+    } catch (e: any) {
+      toast({ title: "Error", description: e.message || "Failed to process PDF", variant: "destructive" });
+    }
+
+    setUploadingPdf(false);
+    // Reset file input
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
   const handleApprove = async () => {
     setApproving(true);
     try {
@@ -271,6 +348,26 @@ const ReviewAssessment = () => {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <input
+              type="file"
+              accept=".pdf"
+              ref={fileInputRef}
+              onChange={handleUploadPdf}
+              className="hidden"
+            />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploadingPdf}
+            >
+              {uploadingPdf ? (
+                <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+              ) : (
+                <FileUp className="h-4 w-4 mr-1" />
+              )}
+              {uploadingPdf ? "Processing..." : "Upload PDF"}
+            </Button>
             <Button variant="outline" size="sm" onClick={() => setAddDialog(true)}>
               <Plus className="h-4 w-4 mr-1" /> Add Question
             </Button>
