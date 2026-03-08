@@ -219,6 +219,7 @@ export type Database = {
         Row: {
           applications_count: number
           aptitude_cutoff: number | null
+          aptitude_questions: Json | null
           company_id: string
           created_at: string
           department: string
@@ -240,6 +241,7 @@ export type Database = {
         Insert: {
           applications_count?: number
           aptitude_cutoff?: number | null
+          aptitude_questions?: Json | null
           company_id: string
           created_at?: string
           department: string
@@ -261,6 +263,7 @@ export type Database = {
         Update: {
           applications_count?: number
           aptitude_cutoff?: number | null
+          aptitude_questions?: Json | null
           company_id?: string
           created_at?: string
           department?: string
