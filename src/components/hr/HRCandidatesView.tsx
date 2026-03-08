@@ -122,11 +122,21 @@ const HRCandidatesView = ({ companyId }: Props) => {
       toast({ title: "No Resume", description: "This candidate did not upload a resume." });
       return;
     }
-    const { data } = await supabase.storage.from("resumes").createSignedUrl(url, 300);
+
+    // If it's already a full URL (legacy data), open directly
+    if (url.startsWith("http://") || url.startsWith("https://")) {
+      setResumeUrl(url);
+      setResumeDialogOpen(true);
+      return;
+    }
+
+    // Otherwise it's a storage path — generate signed URL
+    const { data, error } = await supabase.storage.from("resumes").createSignedUrl(url, 3600);
     if (data?.signedUrl) {
       setResumeUrl(data.signedUrl);
       setResumeDialogOpen(true);
     } else {
+      console.error("Signed URL error:", error);
       toast({ title: "Error", description: "Could not load resume.", variant: "destructive" });
     }
   };
