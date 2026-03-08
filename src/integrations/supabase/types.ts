@@ -53,6 +53,111 @@ export type Database = {
         }
         Relationships: []
       }
+      jobs: {
+        Row: {
+          applications_count: number
+          company_id: string
+          created_at: string
+          department: string
+          experience_max: number | null
+          experience_min: number | null
+          id: string
+          job_description: string | null
+          location: string
+          manager_id: string | null
+          posted_by: string
+          salary_max: number | null
+          salary_min: number | null
+          skills_required: string[] | null
+          status: string
+          title: string
+          updated_at: string
+          work_type: string
+        }
+        Insert: {
+          applications_count?: number
+          company_id: string
+          created_at?: string
+          department: string
+          experience_max?: number | null
+          experience_min?: number | null
+          id?: string
+          job_description?: string | null
+          location: string
+          manager_id?: string | null
+          posted_by: string
+          salary_max?: number | null
+          salary_min?: number | null
+          skills_required?: string[] | null
+          status?: string
+          title: string
+          updated_at?: string
+          work_type?: string
+        }
+        Update: {
+          applications_count?: number
+          company_id?: string
+          created_at?: string
+          department?: string
+          experience_max?: number | null
+          experience_min?: number | null
+          id?: string
+          job_description?: string | null
+          location?: string
+          manager_id?: string | null
+          posted_by?: string
+          salary_max?: number | null
+          salary_min?: number | null
+          skills_required?: string[] | null
+          status?: string
+          title?: string
+          updated_at?: string
+          work_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "jobs_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "jobs_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notifications: {
+        Row: {
+          created_at: string
+          id: string
+          message: string
+          read: boolean
+          title: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message: string
+          read?: boolean
+          title: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message?: string
+          read?: boolean
+          title?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       users: {
         Row: {
           company_id: string | null
