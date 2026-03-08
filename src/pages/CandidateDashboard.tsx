@@ -13,8 +13,8 @@ const stages = [
   { key: "resume_review", label: "Resume Review", icon: "⏳" },
   { key: "aptitude_test", label: "Aptitude Test", icon: "🔒" },
   { key: "video_intro", label: "Video Introduction", icon: "🔒" },
-  { key: "group_discussion", label: "Group Discussion", icon: "🔒" },
   { key: "technical_round", label: "Technical Round", icon: "🔒" },
+  { key: "group_discussion", label: "Group Discussion", icon: "🔒" },
   { key: "hr_interview", label: "HR Interview", icon: "🔒" },
   { key: "offer_letter", label: "Offer Letter", icon: "🔒" },
 ];
@@ -237,7 +237,8 @@ const CandidateDashboard = () => {
                       : rawStage === "test_completed" ? "video_intro"
                       : rawStage === "aptitude_test" && hasSubmittedCurrentTest ? "video_intro"
                       : rawStage === "shortlisted" ? "aptitude_test"
-                      : rawStage === "video_submitted" ? "group_discussion"
+                      : rawStage === "video_submitted" ? "technical_round"
+                      : rawStage === "technical_round" ? "technical_round"
                       : rawStage === "interview" ? "hr_interview"
                       : rawStage === "selected" ? "offer_letter"
                       : rawStage;

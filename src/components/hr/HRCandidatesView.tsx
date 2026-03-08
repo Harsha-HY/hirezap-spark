@@ -31,7 +31,7 @@ interface Props {
   companyId: string;
 }
 
-const stageFlow = ["applied", "ai_scored", "shortlisted", "aptitude_test", "test_completed", "video_intro", "video_submitted", "interview", "selected", "rejected"];
+const stageFlow = ["applied", "ai_scored", "shortlisted", "aptitude_test", "test_completed", "video_intro", "video_submitted", "technical_round", "group_discussion", "interview", "selected", "rejected"];
 
 const stageLabel: Record<string, string> = {
   applied: "Applied",
@@ -41,7 +41,9 @@ const stageLabel: Record<string, string> = {
   test_completed: "Test Done",
   video_intro: "Video Intro",
   video_submitted: "Video Done",
-  interview: "Interview",
+  technical_round: "Technical Round",
+  group_discussion: "Group Discussion",
+  interview: "HR Interview",
   selected: "Selected",
   rejected: "Rejected",
 };
@@ -54,6 +56,8 @@ const stageBadgeClass: Record<string, string> = {
   test_completed: "bg-primary/10 text-primary",
   video_intro: "bg-pink-500/10 text-pink-500",
   video_submitted: "bg-emerald-500/10 text-emerald-500",
+  technical_round: "bg-orange-500/10 text-orange-500",
+  group_discussion: "bg-cyan-500/10 text-cyan-500",
   interview: "bg-indigo-500/10 text-indigo-500",
   selected: "bg-primary/10 text-primary",
   rejected: "bg-destructive/10 text-destructive",
@@ -360,10 +364,8 @@ const HRCandidatesView = ({ companyId }: Props) => {
     const idx = stageFlow.indexOf(current);
     if (idx === -1 || idx >= stageFlow.length - 2) return null;
     const next = stageFlow[idx + 1];
-    if (next === "aptitude_test") return null;
-    if (next === "test_completed") return null;
-    if (next === "video_intro") return null;
-    if (next === "video_submitted") return null;
+    // These stages are handled by specific buttons, not generic "next"
+    if (["aptitude_test", "test_completed", "video_intro", "video_submitted"].includes(next)) return null;
     return next;
   };
 
