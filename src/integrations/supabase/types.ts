@@ -32,6 +32,7 @@ export type Database = {
           resume_score: number | null
           resume_url: string | null
           status: string
+          technical_score: number | null
           test_score: number | null
           updated_at: string
           video_analysis: Json | null
@@ -55,6 +56,7 @@ export type Database = {
           resume_score?: number | null
           resume_url?: string | null
           status?: string
+          technical_score?: number | null
           test_score?: number | null
           updated_at?: string
           video_analysis?: Json | null
@@ -78,6 +80,7 @@ export type Database = {
           resume_score?: number | null
           resume_url?: string | null
           status?: string
+          technical_score?: number | null
           test_score?: number | null
           updated_at?: string
           video_analysis?: Json | null
@@ -101,10 +104,15 @@ export type Database = {
           company_id: string
           created_at: string
           created_by: string
+          hr_approved: boolean
+          hr_approved_at: string | null
           id: string
           job_id: string
+          manager_approved: boolean
+          manager_approved_at: string | null
           questions: Json
           status: string
+          type: string
           updated_at: string
         }
         Insert: {
@@ -113,10 +121,15 @@ export type Database = {
           company_id: string
           created_at?: string
           created_by: string
+          hr_approved?: boolean
+          hr_approved_at?: string | null
           id?: string
           job_id: string
+          manager_approved?: boolean
+          manager_approved_at?: string | null
           questions?: Json
           status?: string
+          type?: string
           updated_at?: string
         }
         Update: {
@@ -125,10 +138,15 @@ export type Database = {
           company_id?: string
           created_at?: string
           created_by?: string
+          hr_approved?: boolean
+          hr_approved_at?: string | null
           id?: string
           job_id?: string
+          manager_approved?: boolean
+          manager_approved_at?: string | null
           questions?: Json
           status?: string
+          type?: string
           updated_at?: string
         }
         Relationships: [
