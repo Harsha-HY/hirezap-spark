@@ -43,6 +43,8 @@ const HRDashboard = () => {
   const [companyName, setCompanyName] = useState("");
   const [companyId, setCompanyId] = useState("");
   const [jobs, setJobs] = useState<JobRow[]>([]);
+  const [totalApplications, setTotalApplications] = useState(0);
+  const [shortlistedCount, setShortlistedCount] = useState(0);
   const [managers, setManagers] = useState<{ id: string; full_name: string }[]>([]);
   const [panelOpen, setPanelOpen] = useState(false);
   const [notifications, setNotifications] = useState<{ id: string; title: string; message: string; created_at: string; read: boolean }[]>([]);
@@ -81,7 +83,20 @@ const HRDashboard = () => {
         .select("*")
         .eq("company_id", user.company_id)
         .order("created_at", { ascending: false });
-      if (jobsData) setJobs(jobsData as JobRow[]);
+      if (jobsData) {
+        setJobs(jobsData as JobRow[]);
+        const jobIds = jobsData.map((j: any) => j.id);
+        if (jobIds.length > 0) {
+          const { data: apps } = await supabase
+            .from("applications")
+            .select("id, current_stage")
+            .in("job_id", jobIds);
+          if (apps) {
+            setTotalApplications(apps.length);
+            setShortlistedCount(apps.filter((a: any) => ["shortlisted", "aptitude_test", "test_completed", "interview", "selected"].includes(a.current_stage)).length);
+          }
+        }
+      }
 
       const { data: mgrs } = await supabase
         .from("users")
@@ -152,8 +167,8 @@ const HRDashboard = () => {
 
   const stats = [
     { icon: Briefcase, label: "Total Jobs Posted", value: jobs.length, color: "text-primary" },
-    { icon: Users, label: "Total Applications", value: jobs.reduce((s, j) => s + j.applications_count, 0), color: "text-blue-400" },
-    { icon: Users, label: "Shortlisted", value: 0, color: "text-amber-400" },
+    { icon: Users, label: "Total Applications", value: totalApplications, color: "text-blue-400" },
+    { icon: Users, label: "Shortlisted", value: shortlistedCount, color: "text-amber-400" },
     { icon: Calendar, label: "Interviews Today", value: 0, color: "text-purple-400" },
   ];
 
