@@ -1,0 +1,1 @@
+ALTER TABLE public.group_discussions ADD COLUMN IF NOT EXISTS meeting_link TEXT DEFAULT NULL;
