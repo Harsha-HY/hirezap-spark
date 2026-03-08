@@ -38,10 +38,15 @@ const AptitudeTest = () => {
   const [timePerQuestion, setTimePerQuestion] = useState<number[]>([]);
   const [violations, setViolations] = useState(0);
   const [submitting, setSubmitting] = useState(false);
+  const [cameraAlert, setCameraAlert] = useState(false);
 
   // Webcam
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const prevFrameRef = useRef<ImageData | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
 
   // Check authorization and load questions from assessments
   useEffect(() => {
