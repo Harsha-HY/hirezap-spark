@@ -57,24 +57,31 @@ Deno.serve(async (req) => {
       throw new Error("Job not found: " + (jobErr?.message || ""));
     }
 
-    // Extract resume text from PDF
+    // Extract resume text (supports private bucket object paths and legacy public URLs)
     let resumeText = "No resume provided";
     if (application.resume_url) {
       try {
-        const pdfResponse = await fetch(application.resume_url);
-        if (pdfResponse.ok) {
-          // For PDF text extraction, we'll send the raw text content
-          // The AI model can work with whatever text we can extract
-          const buffer = await pdfResponse.arrayBuffer();
-          const bytes = new Uint8Array(buffer);
-          // Simple PDF text extraction - look for text between stream markers
+        let bytes: Uint8Array | null = null;
+        const resumeRef = String(application.resume_url);
+
+        // New format: stored object path in private resumes bucket
+        if (!resumeRef.startsWith("http")) {
+          const { data: fileData, error: fileErr } = await supabase.storage.from("resumes").download(resumeRef);
+          if (fileErr) throw new Error(`Resume download failed: ${fileErr.message}`);
+          bytes = new Uint8Array(await fileData.arrayBuffer());
+        } else {
+          // Legacy format: public URL already stored in DB
+          const pdfResponse = await fetch(resumeRef);
+          if (!pdfResponse.ok) throw new Error(`Resume fetch failed: ${pdfResponse.status}`);
+          bytes = new Uint8Array(await pdfResponse.arrayBuffer());
+        }
+
+        if (bytes && bytes.length > 0) {
           const textDecoder = new TextDecoder("utf-8", { fatal: false });
           const rawText = textDecoder.decode(bytes);
-          // Extract readable text portions
           const textParts: string[] = [];
           const lines = rawText.split(/\r?\n/);
           for (const line of lines) {
-            // Filter for lines with mostly printable characters
             const printable = line.replace(/[^\x20-\x7E]/g, "");
             if (printable.length > 10 && printable.length / Math.max(line.length, 1) > 0.5) {
               textParts.push(printable);
@@ -82,10 +89,12 @@ Deno.serve(async (req) => {
           }
           if (textParts.length > 0) {
             resumeText = textParts.join("\n").substring(0, 5000);
+          } else {
+            resumeText = "Resume uploaded but text extraction produced limited output.";
           }
         }
       } catch (e) {
-        console.error("PDF extraction error:", e);
+        console.error("Resume extraction error:", e);
         resumeText = "Could not extract resume text";
       }
     }

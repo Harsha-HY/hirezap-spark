@@ -21,7 +21,7 @@ interface UserRow {
 }
 
 const navItems = [
-  { icon: LayoutDashboard, label: "Dashboard", active: true },
+  { icon: LayoutDashboard, label: "Dashboard" },
   { icon: UserCheck, label: "HR Managers" },
   { icon: UserCog, label: "Hiring Managers" },
   { icon: Users, label: "Candidates" },
@@ -33,6 +33,7 @@ const navItems = [
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
+  const [activeNav, setActiveNav] = useState("Dashboard");
   const [adminName, setAdminName] = useState("");
   const [companyName, setCompanyName] = useState("");
   const [companyId, setCompanyId] = useState("");
@@ -93,6 +94,13 @@ const AdminDashboard = () => {
     setPanelOpen(true);
   };
 
+  const handleNavClick = (label: string) => {
+    setActiveNav(label);
+    if (label === "HR Managers") document.getElementById("hr-managers-section")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    if (label === "Hiring Managers") document.getElementById("hiring-managers-section")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    if (label === "Dashboard") window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
   const stats = [
     { icon: UserCheck, label: "Total HR Managers", value: hrManagers.length, color: "text-primary" },
     { icon: UserCog, label: "Total Hiring Managers", value: hiringManagers.length, color: "text-blue-400" },
@@ -122,11 +130,12 @@ const AdminDashboard = () => {
         </div>
 
         <nav className="flex-1 px-3 py-4 space-y-1">
-          {navItems.map(({ icon: Icon, label, active }) => (
+          {navItems.map(({ icon: Icon, label }) => (
             <button
               key={label}
+              onClick={() => handleNavClick(label)}
               className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
-                active
+                activeNav === label
                   ? "bg-primary/10 text-primary"
                   : "text-muted-foreground hover:bg-secondary hover:text-foreground"
               }`}
@@ -186,7 +195,7 @@ const AdminDashboard = () => {
           </div>
 
           {/* HR Managers Section */}
-          <div className="rounded-xl border border-border bg-card mb-6">
+          <div id="hr-managers-section" className="rounded-xl border border-border bg-card mb-6">
             <div className="flex items-center justify-between px-6 py-4 border-b border-border">
               <h2 className="text-lg font-semibold text-foreground">HR Managers</h2>
               <Button
@@ -239,7 +248,7 @@ const AdminDashboard = () => {
           </div>
 
           {/* Hiring Managers Section */}
-          <div className="rounded-xl border border-border bg-card">
+          <div id="hiring-managers-section" className="rounded-xl border border-border bg-card">
             <div className="flex items-center justify-between px-6 py-4 border-b border-border">
               <h2 className="text-lg font-semibold text-foreground">Hiring Managers</h2>
               <Button

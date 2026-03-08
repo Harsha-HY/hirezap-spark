@@ -26,7 +26,7 @@ interface JobRow {
 }
 
 const navItems = [
-  { icon: LayoutDashboard, label: "Dashboard", active: true },
+  { icon: LayoutDashboard, label: "Dashboard" },
   { icon: Briefcase, label: "Jobs" },
   { icon: Users, label: "Candidates" },
   { icon: Calendar, label: "Interviews" },
@@ -38,6 +38,7 @@ const navItems = [
 
 const HRDashboard = () => {
   const navigate = useNavigate();
+  const [activeNav, setActiveNav] = useState("Dashboard");
   const [hrName, setHrName] = useState("");
   const [hrUserId, setHrUserId] = useState("");
   const [companyName, setCompanyName] = useState("");
@@ -159,6 +160,17 @@ const HRDashboard = () => {
     navigate("/login");
   };
 
+  const handleNavClick = (label: string) => {
+    setActiveNav(label);
+    if (label === "Jobs") {
+      document.getElementById("jobs-section")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
+    if (label === "Dashboard") {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  };
+
   const getManagerName = (managerId: string | null) => {
     if (!managerId) return "—";
     return managers.find(m => m.id === managerId)?.full_name || "—";
@@ -193,11 +205,12 @@ const HRDashboard = () => {
         </div>
 
         <nav className="flex-1 px-3 py-4 space-y-1">
-          {navItems.map(({ icon: Icon, label, active }) => (
+          {navItems.map(({ icon: Icon, label }) => (
             <button
               key={label}
+              onClick={() => handleNavClick(label)}
               className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
-                active
+                activeNav === label
                   ? "bg-primary/10 text-primary"
                   : "text-muted-foreground hover:bg-secondary hover:text-foreground"
               }`}
@@ -326,6 +339,7 @@ const HRDashboard = () => {
 
           {/* Jobs Section */}
           <motion.div
+            id="jobs-section"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.5 }}

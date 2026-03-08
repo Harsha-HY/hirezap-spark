@@ -22,7 +22,7 @@ interface Company {
 }
 
 const navItems = [
-  { icon: Building2, label: "Companies", active: true },
+  { icon: Building2, label: "Companies" },
   { icon: BarChart3, label: "Analytics" },
   { icon: Shield, label: "Security" },
   { icon: Settings, label: "Settings" },
@@ -30,6 +30,7 @@ const navItems = [
 
 const OwnerDashboard = () => {
   const navigate = useNavigate();
+  const [activeNav, setActiveNav] = useState("Companies");
   const [ownerName, setOwnerName] = useState("");
   const [companies, setCompanies] = useState<Company[]>([]);
   const [panelOpen, setPanelOpen] = useState(false);
@@ -75,6 +76,12 @@ const OwnerDashboard = () => {
     navigate("/login");
   };
 
+  const handleNavClick = (label: string) => {
+    setActiveNav(label);
+    if (label === "Companies") document.getElementById("companies-section")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    if (label === "Dashboard") window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
   const stats = [
     { icon: Building2, label: "Total Companies", value: companies.length, color: "text-primary" },
     { icon: UserCheck, label: "Total Super Admins", value: Object.keys(adminMap).length, color: "text-blue-400" },
@@ -101,11 +108,12 @@ const OwnerDashboard = () => {
 
         {/* Nav */}
         <nav className="flex-1 px-3 py-4 space-y-1">
-          {navItems.map(({ icon: Icon, label, active }) => (
+          {navItems.map(({ icon: Icon, label }) => (
             <button
               key={label}
+              onClick={() => handleNavClick(label)}
               className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
-                active
+                activeNav === label
                   ? "bg-primary/10 text-primary"
                   : "text-muted-foreground hover:bg-secondary hover:text-foreground"
               }`}
@@ -167,7 +175,7 @@ const OwnerDashboard = () => {
           </div>
 
           {/* Companies Section */}
-          <div className="rounded-xl border border-border bg-card">
+          <div id="companies-section" className="rounded-xl border border-border bg-card">
             <div className="flex items-center justify-between px-6 py-4 border-b border-border">
               <h2 className="text-lg font-semibold text-foreground">Companies</h2>
               <Button

@@ -20,7 +20,7 @@ const stages = [
 ];
 
 const sidebarLinks = [
-  { icon: LayoutDashboard, label: "Dashboard", active: true },
+  { icon: LayoutDashboard, label: "Dashboard" },
   { icon: Briefcase, label: "My Applications" },
   { icon: MessageSquare, label: "Messages" },
   { icon: Settings, label: "Settings" },
@@ -32,6 +32,7 @@ interface Application {
   status: string;
   applied_at: string;
   job_id: string;
+  resume_url?: string | null;
   jobs?: { title: string; company_id: string; companies?: { company_name: string } | null } | null;
 }
 
@@ -40,6 +41,7 @@ const CandidateDashboard = () => {
   const [applications, setApplications] = useState<Application[]>([]);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activeSidebar, setActiveSidebar] = useState("Dashboard");
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -85,6 +87,24 @@ const CandidateDashboard = () => {
 
   const getStageIndex = (stage: string) => stages.findIndex((s) => s.key === stage);
 
+  const handleSidebarClick = (label: string) => {
+    setActiveSidebar(label);
+    if (label === "My Applications") document.getElementById("my-applications")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    if (label === "Messages") document.getElementById("messages")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    if (label === "Dashboard") document.getElementById("dashboard-top")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  const viewResume = async (resumeRef: string | null | undefined) => {
+    if (!resumeRef) return;
+    if (resumeRef.startsWith("http")) {
+      window.open(resumeRef, "_blank", "noopener,noreferrer");
+      return;
+    }
+    const { data, error } = await supabase.storage.from("resumes").createSignedUrl(resumeRef, 60);
+    if (error || !data?.signedUrl) return;
+    window.open(data.signedUrl, "_blank", "noopener,noreferrer");
+  };
+
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
@@ -108,11 +128,12 @@ const CandidateDashboard = () => {
         </div>
 
         <nav className="flex-1 px-4 space-y-1">
-          {sidebarLinks.map(({ icon: Icon, label, active }) => (
+          {sidebarLinks.map(({ icon: Icon, label }) => (
             <button
               key={label}
+              onClick={() => handleSidebarClick(label)}
               className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-all ${
-                active
+                activeSidebar === label
                   ? "bg-primary/10 text-primary"
                   : "text-muted-foreground hover:bg-secondary hover:text-foreground"
               }`}
@@ -165,7 +186,7 @@ const CandidateDashboard = () => {
 
         <main className="flex-1 overflow-y-auto p-6 space-y-8">
           {/* Welcome */}
-          <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
+          <motion.div id="dashboard-top" initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
             <h3 className="text-2xl font-bold text-foreground">
               Welcome back, <span className="text-primary">{user?.full_name?.split(" ")[0]}</span>
             </h3>
@@ -236,6 +257,7 @@ const CandidateDashboard = () => {
 
           {/* Applications Table */}
           <motion.div
+            id="my-applications"
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
@@ -264,6 +286,7 @@ const CandidateDashboard = () => {
                       <th className="text-left py-3 px-3 font-medium">Company</th>
                       <th className="text-left py-3 px-3 font-medium">Stage</th>
                       <th className="text-left py-3 px-3 font-medium">Status</th>
+                      <th className="text-left py-3 px-3 font-medium">Resume</th>
                       <th className="text-left py-3 px-3 font-medium">Applied</th>
                     </tr>
                   </thead>
@@ -292,6 +315,15 @@ const CandidateDashboard = () => {
                             {app.status}
                           </span>
                         </td>
+                        <td className="py-3 px-3">
+                          {app.resume_url ? (
+                            <Button variant="ghost" size="sm" className="h-7 px-2 text-primary hover:text-primary" onClick={() => viewResume(app.resume_url)}>
+                              View
+                            </Button>
+                          ) : (
+                            <span className="text-muted-foreground">—</span>
+                          )}
+                        </td>
                         <td className="py-3 px-3 text-muted-foreground">
                           {new Date(app.applied_at).toLocaleDateString()}
                         </td>
@@ -305,6 +337,7 @@ const CandidateDashboard = () => {
 
           {/* Messages */}
           <motion.div
+            id="messages"
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
