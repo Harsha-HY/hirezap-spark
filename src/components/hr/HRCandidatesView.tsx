@@ -546,19 +546,96 @@ const HRCandidatesView = ({ companyId }: Props) => {
   );
   const qualifyingApps = testCompletedApps.filter((a) => (a.test_score ?? 0) >= cutoffScore);
 
+  // Candidates eligible for bulk aptitude generation
+  const aptitudeEligibleApps = applications.filter(
+    (a) => ["ai_scored", "shortlisted"].includes(a.current_stage)
+  );
+
+  // Candidates eligible for bulk technical generation
+  const technicalEligibleApps = applications.filter(
+    (a) => a.current_stage === "video_submitted"
+  );
+
+  const handleBulkGenerateAptitude = async () => {
+    if (aptitudeEligibleApps.length === 0) return;
+    setBulkGeneratingAptitude(true);
+
+    try {
+      let successCount = 0;
+      for (const app of aptitudeEligibleApps) {
+        try {
+          const { data, error } = await supabase.functions.invoke("generate-assessment", {
+            body: {
+              jobId: app.job_id,
+              applicationId: app.id,
+              companyId,
+              createdBy: currentUserId,
+            },
+          });
+          if (!error && data?.assessmentId) successCount++;
+        } catch {
+          // Continue with next candidate
+        }
+      }
+
+      toast({
+        title: `✅ Generated for ${successCount}/${aptitudeEligibleApps.length} candidates`,
+        description: "Aptitude questions created. Review each before sending.",
+      });
+      fetchApplications();
+    } catch (e: any) {
+      toast({ title: "Error", description: e.message, variant: "destructive" });
+    }
+    setBulkGeneratingAptitude(false);
+  };
+
+  const handleBulkGenerateTechnical = async () => {
+    if (technicalEligibleApps.length === 0) return;
+    setBulkGeneratingTechnical(true);
+
+    try {
+      let successCount = 0;
+      for (const app of technicalEligibleApps) {
+        try {
+          const { data, error } = await supabase.functions.invoke("generate-technical", {
+            body: {
+              jobId: app.job_id,
+              applicationId: app.id,
+              companyId,
+              createdBy: currentUserId,
+            },
+          });
+          if (!error && data?.assessmentId) {
+            await supabase.from("applications").update({ current_stage: "technical_round" }).eq("id", app.id);
+            successCount++;
+          }
+        } catch {
+          // Continue with next candidate
+        }
+      }
+
+      toast({
+        title: `✅ Generated for ${successCount}/${technicalEligibleApps.length} candidates`,
+        description: "Technical questions created. Review each before sending.",
+      });
+      fetchApplications();
+    } catch (e: any) {
+      toast({ title: "Error", description: e.message, variant: "destructive" });
+    }
+    setBulkGeneratingTechnical(false);
+  };
+
   const handleBulkApprove = async () => {
     if (qualifyingApps.length === 0) return;
     setBulkApproving(true);
 
     try {
-      // Bulk update all qualifying candidates to video_intro
       for (const app of qualifyingApps) {
         await supabase
           .from("applications")
           .update({ current_stage: "video_intro" })
           .eq("id", app.id);
 
-        // Send notification to each candidate
         const { data: candidateUser } = await supabase
           .from("users")
           .select("id")
