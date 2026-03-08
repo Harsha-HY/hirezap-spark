@@ -123,12 +123,21 @@ const CandidateDashboard = () => {
 
     // Fetch GD info for candidate
     if (apps?.length) {
-      const jobIds = [...new Set(apps.map((a: any) => a.job_id))];
-      const { data: gdGroups } = await supabase.from("gd_groups").select("*, group_discussions(*)");
-      if (gdGroups) {
-        const myGroup = (gdGroups as any[]).find(g => g.candidate_ids?.includes(userData.id));
-        if (myGroup?.group_discussions) {
-          setGdInfo({ ...myGroup.group_discussions, group_name: myGroup.group_name });
+      const { data: myGroups } = await supabase
+        .from("gd_groups")
+        .select("gd_id, group_name, candidate_ids")
+        .contains("candidate_ids", [userData.id]);
+
+      const myGroup = (myGroups || [])[0] as any;
+      if (myGroup?.gd_id) {
+        const { data: gd } = await supabase
+          .from("group_discussions")
+          .select("id, topic, scheduled_date, scheduled_time, meeting_link")
+          .eq("id", myGroup.gd_id)
+          .maybeSingle();
+
+        if (gd) {
+          setGdInfo({ ...gd, group_name: myGroup.group_name });
         }
       }
     }
@@ -174,6 +183,12 @@ const CandidateDashboard = () => {
     const { data, error } = await supabase.storage.from("resumes").createSignedUrl(resumeRef, 60);
     if (error || !data?.signedUrl) return;
     window.open(data.signedUrl, "_blank", "noopener,noreferrer");
+  };
+
+  const normalizeMeetingLink = (url: string) => {
+    const trimmed = url.trim();
+    if (!trimmed) return "";
+    return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
   };
 
   if (loading) {
@@ -362,21 +377,22 @@ const CandidateDashboard = () => {
                             </Button>
                           )}
                           {isCurrent && stage.key === "group_discussion" && gdInfo && (
-                            <div className="flex flex-col gap-1">
-                              <span className="text-xs text-muted-foreground">
-                                📅 {gdInfo.scheduled_date} at {gdInfo.scheduled_time} • Group {gdInfo.group_name}
-                              </span>
-                              <span className="text-xs text-muted-foreground">Topic: {gdInfo.topic}</span>
+                            <div className="flex w-full items-start justify-between gap-3">
+                              <div className="flex flex-col gap-1">
+                                <span className="text-xs text-muted-foreground">
+                                  📅 {gdInfo.scheduled_date} at {gdInfo.scheduled_time} • Group {gdInfo.group_name}
+                                </span>
+                                <span className="text-xs text-muted-foreground">Topic: {gdInfo.topic}</span>
+                              </div>
+
                               {gdInfo.meeting_link && (
-                                <a
-                                  href={gdInfo.meeting_link}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
+                                <Button
+                                  size="sm"
+                                  onClick={() => window.open(normalizeMeetingLink(gdInfo.meeting_link), "_blank", "noopener,noreferrer")}
+                                  className="bg-primary text-primary-foreground h-7 px-3 text-xs gap-1 shrink-0"
                                 >
-                                  <Button size="sm" className="bg-primary text-primary-foreground h-7 px-3 text-xs gap-1">
-                                    <ExternalLink className="h-3 w-3" /> Join GD Call
-                                  </Button>
-                                </a>
+                                  <ExternalLink className="h-3 w-3" /> Join GD Call
+                                </Button>
                               )}
                             </div>
                           )}
