@@ -116,6 +116,7 @@ const HRCandidatesView = ({ companyId }: Props) => {
   const [detailsDialog, setDetailsDialog] = useState<any>(null);
   const [detailsPhotoUrl, setDetailsPhotoUrl] = useState<string | null>(null);
   const [detailsResumeUrl, setDetailsResumeUrl] = useState<string | null>(null);
+  const [bulkMovingToGD, setBulkMovingToGD] = useState(false);
   const { toast } = useToast();
 
   // Detect current user role and name
