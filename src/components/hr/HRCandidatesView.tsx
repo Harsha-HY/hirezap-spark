@@ -116,6 +116,7 @@ const HRCandidatesView = ({ companyId }: Props) => {
   const [detailsDialog, setDetailsDialog] = useState<any>(null);
   const [detailsPhotoUrl, setDetailsPhotoUrl] = useState<string | null>(null);
   const [detailsResumeUrl, setDetailsResumeUrl] = useState<string | null>(null);
+  const [bulkMovingToGD, setBulkMovingToGD] = useState(false);
   const { toast } = useToast();
 
   // Detect current user role and name
@@ -616,6 +617,31 @@ const HRCandidatesView = ({ companyId }: Props) => {
     (a) => a.current_stage === "video_submitted"
   );
 
+  // Candidates eligible for bulk move to GD
+  const gdEligibleApps = applications.filter(
+    (a) => a.current_stage === "technical_completed"
+  );
+
+
+
+  const handleBulkMoveToGD = async () => {
+    if (gdEligibleApps.length === 0) return;
+    setBulkMovingToGD(true);
+    try {
+      for (const app of gdEligibleApps) {
+        await supabase.from("applications").update({ current_stage: "group_discussion" }).eq("id", app.id);
+      }
+      toast({
+        title: `✅ ${gdEligibleApps.length} candidates moved to Group Discussion`,
+        description: "Now schedule a GD from the GD Dashboard.",
+      });
+      fetchApplications();
+    } catch (e: any) {
+      toast({ title: "Error", description: e.message, variant: "destructive" });
+    }
+    setBulkMovingToGD(false);
+  };
+
   const handleBulkGenerateAptitude = async () => {
     if (aptitudeEligibleApps.length === 0) return;
     setBulkGeneratingAptitude(true);
@@ -791,6 +817,18 @@ const HRCandidatesView = ({ companyId }: Props) => {
               >
                 {bulkGeneratingTechnical ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Code2 className="h-3.5 w-3.5" />}
                 {bulkGeneratingTechnical ? "Generating..." : `Generate Technical for All (${technicalEligibleApps.length})`}
+              </Button>
+            )}
+            {gdEligibleApps.length > 0 && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleBulkMoveToGD}
+                disabled={bulkMovingToGD}
+                className="gap-2 text-xs"
+              >
+                {bulkMovingToGD ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Users className="h-3.5 w-3.5" />}
+                {bulkMovingToGD ? "Moving..." : `Move All to GD (${gdEligibleApps.length})`}
               </Button>
             )}
             {testCompletedApps.length > 0 && currentUserRole === "manager" && (
