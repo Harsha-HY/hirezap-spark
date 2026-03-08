@@ -14,6 +14,68 @@ export type Database = {
   }
   public: {
     Tables: {
+      applications: {
+        Row: {
+          applied_at: string
+          candidate_id: string
+          cover_letter: string | null
+          current_company: string
+          current_ctc: number
+          current_stage: string
+          expected_ctc: number
+          experience_years: number
+          id: string
+          job_id: string
+          notice_period: number
+          photo_url: string | null
+          resume_url: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          applied_at?: string
+          candidate_id: string
+          cover_letter?: string | null
+          current_company: string
+          current_ctc: number
+          current_stage?: string
+          expected_ctc: number
+          experience_years: number
+          id?: string
+          job_id: string
+          notice_period: number
+          photo_url?: string | null
+          resume_url?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          applied_at?: string
+          candidate_id?: string
+          cover_letter?: string | null
+          current_company?: string
+          current_ctc?: number
+          current_stage?: string
+          expected_ctc?: number
+          experience_years?: number
+          id?: string
+          job_id?: string
+          notice_period?: number
+          photo_url?: string | null
+          resume_url?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "applications_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       companies: {
         Row: {
           company_code: string

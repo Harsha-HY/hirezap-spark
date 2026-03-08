@@ -5,9 +5,12 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
+import CandidateSignup from "./pages/CandidateSignup";
+import Jobs from "./pages/Jobs";
 import OwnerDashboard from "./pages/OwnerDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
 import HRDashboard from "./pages/HRDashboard";
+import CandidateDashboard from "./pages/CandidateDashboard";
 import NotFound from "./pages/NotFound";
 import ProtectedRoute from "./components/ProtectedRoute";
 
@@ -23,6 +26,8 @@ const App = () => (
           <Route path="/" element={<Navigate to="/login" replace />} />
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
+          <Route path="/candidate-signup" element={<CandidateSignup />} />
+          <Route path="/jobs" element={<Jobs />} />
           <Route
             path="/owner-dashboard"
             element={
@@ -44,6 +49,14 @@ const App = () => (
             element={
               <ProtectedRoute requiredRole="hr">
                 <HRDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/candidate-dashboard"
+            element={
+              <ProtectedRoute requiredRole="candidate">
+                <CandidateDashboard />
               </ProtectedRoute>
             }
           />
