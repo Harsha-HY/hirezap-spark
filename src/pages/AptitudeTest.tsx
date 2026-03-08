@@ -82,20 +82,6 @@ const AptitudeTest = () => {
         return;
       }
 
-      // Block if already completed
-      const { data: completedApp } = await supabase
-        .from("applications")
-        .select("id")
-        .eq("candidate_id", user.id)
-        .eq("current_stage", "test_completed")
-        .maybeSingle();
-
-      if (completedApp) {
-        setAccessMessage("You already submitted this test. Retake is not allowed.");
-        setLoading(false);
-        return;
-      }
-
       const { data: app } = await supabase
         .from("applications")
         .select("*")
