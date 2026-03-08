@@ -115,6 +115,14 @@ const App = () => (
               </ProtectedRoute>
             }
           />
+          <Route
+            path="/gd-dashboard"
+            element={
+              <ProtectedRoute requiredRole={["hr", "manager"]}>
+                <GDDashboard />
+              </ProtectedRoute>
+            }
+          />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
