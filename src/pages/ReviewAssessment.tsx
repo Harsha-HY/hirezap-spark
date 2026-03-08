@@ -69,6 +69,14 @@ const ReviewAssessment = () => {
 
   useEffect(() => {
     fetchAssessment();
+    // Detect user role for navigation
+    (async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        const { data } = await supabase.from("users").select("role").eq("user_id", session.user.id).maybeSingle();
+        if (data?.role) setUserRole(data.role);
+      }
+    })();
   }, [assessmentId]);
 
   const fetchAssessment = async () => {
