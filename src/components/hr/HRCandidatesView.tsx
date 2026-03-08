@@ -492,7 +492,10 @@ const HRCandidatesView = ({ companyId }: Props) => {
       if (error) throw error;
 
       if (data?.assessmentId) {
-        // Update stage to technical_round (pending approval)
+        // Optimistic update
+        setApplications((prev) =>
+          prev.map((a) => a.id === app.id ? { ...a, current_stage: "technical_round" } : a)
+        );
         await supabase.from("applications").update({ current_stage: "technical_round" }).eq("id", app.id);
         toast({
           title: "🤖 Technical questions generated!",
