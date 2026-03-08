@@ -1017,6 +1017,93 @@ const HRCandidatesView = ({ companyId }: Props) => {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Cutoff Score Auto-Approve Dialog */}
+      <Dialog open={cutoffDialogOpen} onOpenChange={setCutoffDialogOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Filter className="h-5 w-5 text-primary" />
+              Auto-Approve by Cutoff Score
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-6">
+            <div>
+              <p className="text-sm text-muted-foreground mb-4">
+                Set a minimum aptitude test score. All candidates scoring at or above this cutoff will automatically move to the <strong>Video Introduction</strong> round.
+              </p>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-foreground">Cutoff Score</span>
+                  <span className="text-2xl font-bold text-primary">{cutoffScore}%</span>
+                </div>
+                <Slider
+                  value={[cutoffScore]}
+                  onValueChange={(val) => setCutoffScore(val[0])}
+                  min={0}
+                  max={100}
+                  step={5}
+                  className="w-full"
+                />
+                <div className="flex justify-between text-xs text-muted-foreground">
+                  <span>0%</span>
+                  <span>50%</span>
+                  <span>100%</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Preview */}
+            <div className="rounded-lg border border-border bg-muted/50 p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-foreground">Candidates qualifying</span>
+                <span className="text-lg font-bold text-primary">
+                  {qualifyingApps.length} / {testCompletedApps.length}
+                </span>
+              </div>
+              {qualifyingApps.length > 0 && (
+                <div className="max-h-40 overflow-y-auto space-y-1">
+                  {qualifyingApps.map((app) => (
+                    <div key={app.id} className="flex items-center justify-between text-sm py-1 px-2 rounded bg-card">
+                      <span className="text-foreground">{app.candidate_name}</span>
+                      <span className={`font-bold ${(app.test_score ?? 0) >= 70 ? "text-primary" : "text-amber-500"}`}>
+                        {app.test_score}%
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {qualifyingApps.length === 0 && (
+                <p className="text-xs text-muted-foreground text-center py-2">
+                  No candidates meet this cutoff. Try lowering the score.
+                </p>
+              )}
+            </div>
+
+            <div className="flex gap-3">
+              <Button
+                variant="outline"
+                onClick={() => setCutoffDialogOpen(false)}
+                className="flex-1"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleBulkApprove}
+                disabled={qualifyingApps.length === 0 || bulkApproving}
+                className="flex-1 gap-2 bg-primary text-primary-foreground"
+              >
+                {bulkApproving ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <CheckCheck className="h-4 w-4" />
+                )}
+                {bulkApproving ? "Approving..." : `Approve ${qualifyingApps.length} Candidates`}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </motion.div>
   );
 };
