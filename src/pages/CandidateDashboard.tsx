@@ -68,7 +68,22 @@ const CandidateDashboard = () => {
       .eq("candidate_id", userData.id)
       .order("applied_at", { ascending: false });
 
-    if (apps) setApplications(apps as unknown as Application[]);
+    if (apps) {
+      const appRows = apps as unknown as Application[];
+      setApplications(appRows);
+
+      const appIds = appRows.map((a) => a.id);
+      if (appIds.length > 0) {
+        const { data: answerRows } = await supabase
+          .from("test_answers")
+          .select("application_id")
+          .in("application_id", appIds);
+
+        setSubmittedTestAppIds(new Set((answerRows || []).map((r: any) => r.application_id)));
+      } else {
+        setSubmittedTestAppIds(new Set());
+      }
+    }
 
     const { data: notifs } = await supabase
       .from("notifications")

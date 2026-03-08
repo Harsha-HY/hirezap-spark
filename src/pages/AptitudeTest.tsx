@@ -83,6 +83,20 @@ const AptitudeTest = () => {
         return;
       }
 
+      // Block if already completed
+      const { data: completedApp } = await supabase
+        .from("applications")
+        .select("id")
+        .eq("candidate_id", user.id)
+        .eq("current_stage", "test_completed")
+        .maybeSingle();
+
+      if (completedApp) {
+        setAccessMessage("You already submitted this test. Retake is not allowed.");
+        setLoading(false);
+        return;
+      }
+
       const { data: app } = await supabase
         .from("applications")
         .select("*")
@@ -91,6 +105,18 @@ const AptitudeTest = () => {
         .maybeSingle();
 
       if (app) {
+        // Also block if answers already exist (submission done but stage not updated)
+        const { count: existingAnswersCount } = await supabase
+          .from("test_answers")
+          .select("id", { count: "exact", head: true })
+          .eq("application_id", app.id);
+
+        if ((existingAnswersCount || 0) > 0) {
+          setAccessMessage("You already submitted this test. Retake is not allowed.");
+          setLoading(false);
+          return;
+        }
+
         setApplication(app);
 
         // Load approved assessment questions
