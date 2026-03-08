@@ -559,6 +559,23 @@ const HRCandidatesView = ({ companyId }: Props) => {
                               Watch
                             </Button>
                           )}
+                          {canOpenTechnical && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleOpenTechnicalRound(app)}
+                              disabled={generatingTechnicalFor === app.id}
+                              className="text-orange-500 hover:text-orange-600 gap-1 text-xs"
+                              title="Open Technical Round"
+                            >
+                              {generatingTechnicalFor === app.id ? (
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              ) : (
+                                <Code2 className="h-3.5 w-3.5" />
+                              )}
+                              {generatingTechnicalFor === app.id ? "Generating..." : "Technical"}
+                            </Button>
+                          )}
                           {nextStage && app.current_stage !== "rejected" && app.current_stage !== "selected" && (
                             <Button
                               variant="ghost"
