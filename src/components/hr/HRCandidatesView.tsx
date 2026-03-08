@@ -482,17 +482,19 @@ const HRCandidatesView = ({ companyId }: Props) => {
     setGeneratingTechnicalFor(null);
   };
 
+  const [techViolations, setTechViolations] = useState<any[]>([]);
+
   const handleViewTechReport = async (app: any) => {
     setTechnicalReportDialog(app);
     setTechnicalAssessment(null);
-    // Fetch the technical assessment questions
-    const { data: assessment } = await supabase
-      .from("assessments")
-      .select("questions")
-      .eq("application_id", app.id)
-      .eq("type", "technical")
-      .maybeSingle();
-    setTechnicalAssessment(assessment?.questions || null);
+    setTechViolations([]);
+    // Fetch assessment questions and violations in parallel
+    const [assessmentRes, violationsRes] = await Promise.all([
+      supabase.from("assessments").select("questions").eq("application_id", app.id).eq("type", "technical").maybeSingle(),
+      supabase.from("test_violations").select("*").eq("application_id", app.id).order("created_at", { ascending: true }),
+    ]);
+    setTechnicalAssessment(assessmentRes.data?.questions || null);
+    setTechViolations(violationsRes.data || []);
   };
 
   const getVerdict = (analysis: any): string => {
