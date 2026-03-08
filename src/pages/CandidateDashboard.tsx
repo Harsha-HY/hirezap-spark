@@ -32,6 +32,7 @@ interface Application {
   status: string;
   applied_at: string;
   job_id: string;
+  resume_url?: string | null;
   jobs?: { title: string; company_id: string; companies?: { company_name: string } | null } | null;
 }
 
