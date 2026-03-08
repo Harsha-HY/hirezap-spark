@@ -392,9 +392,20 @@ const HRCandidatesView = ({ companyId }: Props) => {
             <DialogTitle>Resume</DialogTitle>
           </DialogHeader>
           {resumeUrl && (() => {
-            const isPdf = resumeUrl.toLowerCase().includes('.pdf');
-            const viewerUrl = isPdf 
-              ? resumeUrl 
+            const lower = resumeUrl.toLowerCase();
+            const isImage = ['.jpg', '.jpeg', '.png', '.webp'].some(ext => lower.includes(ext));
+            const isPdf = lower.includes('.pdf');
+
+            if (isImage) {
+              return (
+                <div className="w-full flex-1 overflow-auto rounded-lg border border-border" style={{ height: "calc(85vh - 80px)" }}>
+                  <img src={resumeUrl} alt="Resume" className="w-full h-auto object-contain" />
+                </div>
+              );
+            }
+
+            const viewerUrl = isPdf
+              ? resumeUrl
               : `https://docs.google.com/gview?url=${encodeURIComponent(resumeUrl)}&embedded=true`;
             return (
               <iframe 
