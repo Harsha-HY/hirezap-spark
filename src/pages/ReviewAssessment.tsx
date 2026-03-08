@@ -348,6 +348,26 @@ const ReviewAssessment = () => {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <input
+              type="file"
+              accept=".pdf"
+              ref={fileInputRef}
+              onChange={handleUploadPdf}
+              className="hidden"
+            />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploadingPdf}
+            >
+              {uploadingPdf ? (
+                <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+              ) : (
+                <FileUp className="h-4 w-4 mr-1" />
+              )}
+              {uploadingPdf ? "Processing..." : "Upload PDF"}
+            </Button>
             <Button variant="outline" size="sm" onClick={() => setAddDialog(true)}>
               <Plus className="h-4 w-4 mr-1" /> Add Question
             </Button>
