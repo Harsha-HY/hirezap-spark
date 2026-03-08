@@ -237,6 +237,7 @@ const CandidateDashboard = () => {
                       : rawStage === "test_completed" ? "video_intro"
                       : rawStage === "aptitude_test" && hasSubmittedCurrentTest ? "video_intro"
                       : rawStage === "shortlisted" ? "aptitude_test"
+                      : rawStage === "video_submitted" ? "group_discussion"
                       : rawStage === "interview" ? "hr_interview"
                       : rawStage === "selected" ? "offer_letter"
                       : rawStage;
@@ -282,6 +283,15 @@ const CandidateDashboard = () => {
                               className="bg-primary text-primary-foreground h-7 px-3 text-xs"
                             >
                               🎯 Take Test
+                            </Button>
+                          )}
+                          {isCurrent && stage.key === "video_intro" && (
+                            <Button
+                              size="sm"
+                              onClick={() => navigate("/video-intro")}
+                              className="bg-primary text-primary-foreground h-7 px-3 text-xs"
+                            >
+                              🎥 Record Video
                             </Button>
                           )}
                         </div>

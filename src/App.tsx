@@ -12,6 +12,7 @@ import AdminDashboard from "./pages/AdminDashboard";
 import HRDashboard from "./pages/HRDashboard";
 import CandidateDashboard from "./pages/CandidateDashboard";
 import AptitudeTest from "./pages/AptitudeTest";
+import VideoIntro from "./pages/VideoIntro";
 import ReviewAssessment from "./pages/ReviewAssessment";
 import NotFound from "./pages/NotFound";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -75,6 +76,14 @@ const App = () => (
             element={
               <ProtectedRoute requiredRole="candidate">
                 <AptitudeTest />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/video-intro"
+            element={
+              <ProtectedRoute requiredRole="candidate">
+                <VideoIntro />
               </ProtectedRoute>
             }
           />

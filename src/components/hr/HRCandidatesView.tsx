@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { FileText, ArrowRight, XCircle, BookOpen, Eye, Loader2 } from "lucide-react";
+import { FileText, ArrowRight, XCircle, BookOpen, Eye, Loader2, Video, Play } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -31,7 +31,7 @@ interface Props {
   companyId: string;
 }
 
-const stageFlow = ["applied", "ai_scored", "shortlisted", "aptitude_test", "test_completed", "interview", "selected", "rejected"];
+const stageFlow = ["applied", "ai_scored", "shortlisted", "aptitude_test", "test_completed", "video_intro", "video_submitted", "interview", "selected", "rejected"];
 
 const stageLabel: Record<string, string> = {
   applied: "Applied",
@@ -39,6 +39,8 @@ const stageLabel: Record<string, string> = {
   shortlisted: "Shortlisted",
   aptitude_test: "Aptitude Test",
   test_completed: "Test Done",
+  video_intro: "Video Intro",
+  video_submitted: "Video Done",
   interview: "Interview",
   selected: "Selected",
   rejected: "Rejected",
@@ -50,6 +52,8 @@ const stageBadgeClass: Record<string, string> = {
   shortlisted: "bg-amber-500/10 text-amber-500",
   aptitude_test: "bg-purple-500/10 text-purple-500",
   test_completed: "bg-primary/10 text-primary",
+  video_intro: "bg-pink-500/10 text-pink-500",
+  video_submitted: "bg-emerald-500/10 text-emerald-500",
   interview: "bg-indigo-500/10 text-indigo-500",
   selected: "bg-primary/10 text-primary",
   rejected: "bg-destructive/10 text-destructive",
@@ -68,6 +72,8 @@ const HRCandidatesView = ({ companyId }: Props) => {
   const [testSections, setTestSections] = useState<any[]>([]);
   const [candidatePhotoUrl, setCandidatePhotoUrl] = useState<string | null>(null);
   const [generatingTestFor, setGeneratingTestFor] = useState<string | null>(null);
+  const [videoDialog, setVideoDialog] = useState<any>(null);
+  const [videoSignedUrl, setVideoSignedUrl] = useState<string | null>(null);
   const { toast } = useToast();
 
   const fetchApplications = async () => {
@@ -255,6 +261,46 @@ const HRCandidatesView = ({ companyId }: Props) => {
     }
   };
 
+  const handleOpenVideoIntro = async (app: any) => {
+    // Move candidate to video_intro stage and notify
+    const { error } = await supabase
+      .from("applications")
+      .update({ current_stage: "video_intro" })
+      .eq("id", app.id);
+
+    if (error) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+      return;
+    }
+
+    // Get candidate user record for notification
+    const { data: candidateUser } = await supabase
+      .from("users")
+      .select("id")
+      .eq("id", app.candidate_id)
+      .maybeSingle();
+
+    if (candidateUser) {
+      await supabase.from("notifications").insert({
+        user_id: candidateUser.id,
+        title: "Aptitude Test Cleared!",
+        message: "Congratulations! You have cleared the aptitude test. Next step is Video Introduction. Record a 3 to 4 minute video about: Introduce yourself, Your experience and skills, Your best project, Why you want this role. Login to record your video at /video-intro. Complete within 48 hours.",
+      });
+    }
+
+    toast({ title: "✅ Video Round Opened", description: `Candidate has been notified to record their video introduction.` });
+    fetchApplications();
+  };
+
+  const handleViewVideo = async (app: any) => {
+    setVideoDialog(app);
+    setVideoSignedUrl(null);
+    if (app.video_url) {
+      const { data } = await supabase.storage.from("videos").createSignedUrl(app.video_url, 3600);
+      if (data?.signedUrl) setVideoSignedUrl(data.signedUrl);
+    }
+  };
+
   const getVerdict = (analysis: any): string => {
     if (!analysis) return "—";
     if (typeof analysis === "object" && analysis.verdict) return analysis.verdict;
@@ -264,10 +310,11 @@ const HRCandidatesView = ({ companyId }: Props) => {
   const getNextStage = (current: string): string | null => {
     const idx = stageFlow.indexOf(current);
     if (idx === -1 || idx >= stageFlow.length - 2) return null;
-    // Skip aptitude_test stage in the flow button - use the dedicated button
     const next = stageFlow[idx + 1];
     if (next === "aptitude_test") return null;
     if (next === "test_completed") return null;
+    if (next === "video_intro") return null;
+    if (next === "video_submitted") return null;
     return next;
   };
 
@@ -311,6 +358,8 @@ const HRCandidatesView = ({ companyId }: Props) => {
                   const nextStage = getNextStage(app.current_stage);
                   const canOpenTest = ["ai_scored", "shortlisted"].includes(app.current_stage);
                   const canViewResults = app.current_stage === "test_completed" || app.test_score !== null;
+                  const canOpenVideo = app.current_stage === "test_completed";
+                  const canViewVideo = (app as any).video_url || app.current_stage === "video_submitted";
 
                   return (
                     <TableRow key={app.id}>
@@ -360,7 +409,7 @@ const HRCandidatesView = ({ companyId }: Props) => {
                         </Button>
                       </TableCell>
                       <TableCell>
-                        <div className="flex items-center gap-1">
+                        <div className="flex items-center gap-1 flex-wrap">
                           {canOpenTest && (
                             <Button
                               variant="ghost"
@@ -387,6 +436,28 @@ const HRCandidatesView = ({ companyId }: Props) => {
                             >
                               <Eye className="h-3.5 w-3.5" />
                               Results
+                            </Button>
+                          )}
+                          {canOpenVideo && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleOpenVideoIntro(app)}
+                              className="text-pink-500 hover:text-pink-600 gap-1 text-xs"
+                            >
+                              <Video className="h-3.5 w-3.5" />
+                              Open Video
+                            </Button>
+                          )}
+                          {canViewVideo && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleViewVideo(app)}
+                              className="text-emerald-500 hover:text-emerald-600 gap-1 text-xs"
+                            >
+                              <Play className="h-3.5 w-3.5" />
+                              Watch
                             </Button>
                           )}
                           {nextStage && app.current_stage !== "rejected" && app.current_stage !== "selected" && (
@@ -686,6 +757,64 @@ const HRCandidatesView = ({ companyId }: Props) => {
                   onClick={() => {
                     handleUpdateStage(testResultDialog.id, "rejected");
                     setTestResultDialog(null);
+                  }}
+                  className="text-destructive border-destructive/30"
+                >
+                  ❌ Reject Candidate
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Video Viewer Dialog */}
+      <Dialog open={!!videoDialog} onOpenChange={() => setVideoDialog(null)}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Video Introduction — {videoDialog?.candidate_name}</DialogTitle>
+          </DialogHeader>
+          {videoDialog && (
+            <div className="space-y-4">
+              {videoSignedUrl ? (
+                <video
+                  src={videoSignedUrl}
+                  controls
+                  className="w-full rounded-lg border border-border aspect-video bg-black"
+                />
+              ) : (
+                <div className="w-full aspect-video bg-muted rounded-lg flex items-center justify-center">
+                  <p className="text-muted-foreground">Loading video...</p>
+                </div>
+              )}
+
+              {videoSignedUrl && (
+                <a
+                  href={videoSignedUrl}
+                  download
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 text-sm text-primary hover:underline"
+                >
+                  ⬇️ Download Video
+                </a>
+              )}
+
+              <div className="flex gap-2 pt-2">
+                <Button
+                  onClick={() => {
+                    handleUpdateStage(videoDialog.id, "interview");
+                    setVideoDialog(null);
+                  }}
+                  className="bg-primary text-primary-foreground"
+                >
+                  ✅ Move to Interview
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    handleUpdateStage(videoDialog.id, "rejected");
+                    setVideoDialog(null);
                   }}
                   className="text-destructive border-destructive/30"
                 >
