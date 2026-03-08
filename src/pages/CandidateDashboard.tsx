@@ -127,11 +127,12 @@ const CandidateDashboard = () => {
         </div>
 
         <nav className="flex-1 px-4 space-y-1">
-          {sidebarLinks.map(({ icon: Icon, label, active }) => (
+          {sidebarLinks.map(({ icon: Icon, label }) => (
             <button
               key={label}
+              onClick={() => handleSidebarClick(label)}
               className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-all ${
-                active
+                activeSidebar === label
                   ? "bg-primary/10 text-primary"
                   : "text-muted-foreground hover:bg-secondary hover:text-foreground"
               }`}
