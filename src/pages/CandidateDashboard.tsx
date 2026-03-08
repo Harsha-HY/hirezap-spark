@@ -91,6 +91,7 @@ const CandidateDashboard = () => {
     setActiveSidebar(label);
     if (label === "My Applications") document.getElementById("my-applications")?.scrollIntoView({ behavior: "smooth", block: "start" });
     if (label === "Messages") document.getElementById("messages")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    if (label === "Settings") document.getElementById("settings")?.scrollIntoView({ behavior: "smooth", block: "start" });
     if (label === "Dashboard") document.getElementById("dashboard-top")?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
@@ -212,10 +213,11 @@ const CandidateDashboard = () => {
 
                 <div className="space-y-4">
                   {stages.map((stage, idx) => {
-                    const currentIdx = getStageIndex(applications[0].current_stage);
+                    const rawStage = applications[0].current_stage;
+                    const normalizedStage = rawStage === "applied" || rawStage === "ai_scored" ? "resume_review" : rawStage;
+                    const currentIdx = getStageIndex(normalizedStage);
                     const isCompleted = idx < currentIdx;
                     const isCurrent = idx === currentIdx;
-                    const isLocked = idx > currentIdx;
 
                     return (
                       <div key={stage.key} className="relative flex items-center gap-4 pl-2">
@@ -368,6 +370,11 @@ const CandidateDashboard = () => {
                 ))}
               </div>
             )}
+          </motion.div>
+
+          <motion.div id="settings" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="rounded-2xl border border-border bg-card p-6">
+            <h4 className="text-lg font-bold text-foreground mb-2">Settings</h4>
+            <p className="text-sm text-muted-foreground">Profile and notification settings will appear here.</p>
           </motion.div>
         </main>
       </div>

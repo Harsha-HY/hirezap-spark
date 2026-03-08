@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { motion } from "framer-motion";
 import AddUserPanel from "@/components/AddUserPanel";
+import { useToast } from "@/hooks/use-toast";
 
 interface UserRow {
   id: string;
@@ -41,6 +42,7 @@ const AdminDashboard = () => {
   const [hiringManagers, setHiringManagers] = useState<UserRow[]>([]);
   const [panelOpen, setPanelOpen] = useState(false);
   const [panelType, setPanelType] = useState<"hr" | "manager">("hr");
+  const { toast } = useToast();
 
   const fetchData = async () => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -96,9 +98,20 @@ const AdminDashboard = () => {
 
   const handleNavClick = (label: string) => {
     setActiveNav(label);
-    if (label === "HR Managers") document.getElementById("hr-managers-section")?.scrollIntoView({ behavior: "smooth", block: "start" });
-    if (label === "Hiring Managers") document.getElementById("hiring-managers-section")?.scrollIntoView({ behavior: "smooth", block: "start" });
-    if (label === "Dashboard") window.scrollTo({ top: 0, behavior: "smooth" });
+
+    const sectionMap: Record<string, string> = {
+      Dashboard: "admin-dashboard-top",
+      "HR Managers": "hr-managers-section",
+      "Hiring Managers": "hiring-managers-section",
+    };
+
+    const sectionId = sectionMap[label];
+    if (sectionId) {
+      document.getElementById(sectionId)?.scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
+
+    toast({ title: "Section unavailable", description: `${label} module is coming soon.` });
   };
 
   const stats = [
@@ -174,7 +187,7 @@ const AdminDashboard = () => {
           </div>
         </header>
 
-        <main className="flex-1 p-8">
+        <main id="admin-dashboard-top" className="flex-1 p-8">
           {/* Stat Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
             {stats.map(({ icon: Icon, label, value, color }, i) => (

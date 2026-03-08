@@ -162,13 +162,25 @@ const HRDashboard = () => {
 
   const handleNavClick = (label: string) => {
     setActiveNav(label);
-    if (label === "Jobs") {
-      document.getElementById("jobs-section")?.scrollIntoView({ behavior: "smooth", block: "start" });
+
+    const sectionMap: Record<string, string> = {
+      Dashboard: "dashboard-top",
+      Jobs: "jobs-section",
+      Candidates: "candidates-section",
+      Interviews: "interviews-section",
+      "Group Discussion": "group-discussion-section",
+      Messages: "messages-section",
+      Analytics: "analytics-section",
+      Settings: "settings-section",
+    };
+
+    const sectionId = sectionMap[label];
+    if (sectionId) {
+      document.getElementById(sectionId)?.scrollIntoView({ behavior: "smooth", block: "start" });
       return;
     }
-    if (label === "Dashboard") {
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    }
+
+    toast({ title: "Section unavailable", description: `${label} is not available yet.` });
   };
 
   const getManagerName = (managerId: string | null) => {
@@ -276,7 +288,7 @@ const HRDashboard = () => {
           </div>
         </header>
 
-        <main className="flex-1 p-8">
+        <main id="dashboard-top" className="flex-1 p-8">
           {/* Stat Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
             {stats.map(({ icon: Icon, label, value, color }, i) => (
@@ -409,6 +421,36 @@ const HRDashboard = () => {
               </TableBody>
             </Table>
           </motion.div>
+
+          <div id="candidates-section" className="rounded-xl border border-border bg-card p-6 mt-6">
+            <h2 className="text-lg font-semibold text-foreground">Candidates</h2>
+            <p className="text-sm text-muted-foreground mt-2">Candidates list module will be shown here.</p>
+          </div>
+
+          <div id="interviews-section" className="rounded-xl border border-border bg-card p-6 mt-6">
+            <h2 className="text-lg font-semibold text-foreground">Interviews</h2>
+            <p className="text-sm text-muted-foreground mt-2">Interview scheduling module will be shown here.</p>
+          </div>
+
+          <div id="group-discussion-section" className="rounded-xl border border-border bg-card p-6 mt-6">
+            <h2 className="text-lg font-semibold text-foreground">Group Discussion</h2>
+            <p className="text-sm text-muted-foreground mt-2">Group discussion rounds will be shown here.</p>
+          </div>
+
+          <div id="messages-section" className="rounded-xl border border-border bg-card p-6 mt-6">
+            <h2 className="text-lg font-semibold text-foreground">Messages</h2>
+            <p className="text-sm text-muted-foreground mt-2">Messaging center will be shown here.</p>
+          </div>
+
+          <div id="analytics-section" className="rounded-xl border border-border bg-card p-6 mt-6">
+            <h2 className="text-lg font-semibold text-foreground">Analytics</h2>
+            <p className="text-sm text-muted-foreground mt-2">Recruitment analytics will be shown here.</p>
+          </div>
+
+          <div id="settings-section" className="rounded-xl border border-border bg-card p-6 mt-6">
+            <h2 className="text-lg font-semibold text-foreground">Settings</h2>
+            <p className="text-sm text-muted-foreground mt-2">HR settings will be shown here.</p>
+          </div>
         </main>
       </div>
 

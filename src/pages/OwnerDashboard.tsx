@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { motion } from "framer-motion";
 import AddCompanyPanel from "@/components/AddCompanyPanel";
+import { useToast } from "@/hooks/use-toast";
 
 interface Company {
   id: string;
@@ -35,6 +36,7 @@ const OwnerDashboard = () => {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [panelOpen, setPanelOpen] = useState(false);
   const [adminMap, setAdminMap] = useState<Record<string, { full_name: string; email: string }>>({});
+  const { toast } = useToast();
 
   const fetchData = async () => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -78,8 +80,18 @@ const OwnerDashboard = () => {
 
   const handleNavClick = (label: string) => {
     setActiveNav(label);
-    if (label === "Companies") document.getElementById("companies-section")?.scrollIntoView({ behavior: "smooth", block: "start" });
-    if (label === "Dashboard") window.scrollTo({ top: 0, behavior: "smooth" });
+
+    const sectionMap: Record<string, string> = {
+      Companies: "companies-section",
+    };
+
+    const sectionId = sectionMap[label];
+    if (sectionId) {
+      document.getElementById(sectionId)?.scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
+
+    toast({ title: "Section unavailable", description: `${label} module is coming soon.` });
   };
 
   const stats = [
