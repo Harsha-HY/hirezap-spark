@@ -1459,32 +1459,52 @@ const HRCandidatesView = ({ companyId }: Props) => {
               </div>
             </div>
 
-            {/* Preview */}
+            {/* Preview - Qualifying */}
             <div className="rounded-lg border border-border bg-muted/50 p-4 space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-foreground">Candidates qualifying</span>
+                <span className="text-sm font-medium text-foreground">✅ Candidates qualifying</span>
                 <span className="text-lg font-bold text-primary">
                   {qualifyingApps.length} / {testCompletedApps.length}
                 </span>
               </div>
               {qualifyingApps.length > 0 && (
-                <div className="max-h-40 overflow-y-auto space-y-1">
+                <div className="max-h-32 overflow-y-auto space-y-1">
                   {qualifyingApps.map((app) => (
                     <div key={app.id} className="flex items-center justify-between text-sm py-1 px-2 rounded bg-card">
                       <span className="text-foreground">{app.candidate_name}</span>
-                      <span className={`font-bold ${(app.test_score ?? 0) >= 70 ? "text-primary" : "text-amber-500"}`}>
-                        {app.test_score}%
-                      </span>
+                      <span className="font-bold text-primary">{app.test_score}%</span>
                     </div>
                   ))}
                 </div>
               )}
-              {qualifyingApps.length === 0 && (
-                <p className="text-xs text-muted-foreground text-center py-2">
-                  No candidates meet this cutoff. Try lowering the score.
-                </p>
-              )}
             </div>
+
+            {/* Preview - Rejected */}
+            {failedApps.length > 0 && (
+              <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-destructive">❌ Will be rejected</span>
+                  <span className="text-lg font-bold text-destructive">
+                    {failedApps.length}
+                  </span>
+                </div>
+                <div className="max-h-32 overflow-y-auto space-y-1">
+                  {failedApps.map((app) => (
+                    <div key={app.id} className="flex items-center justify-between text-sm py-1 px-2 rounded bg-card">
+                      <span className="text-foreground">{app.candidate_name}</span>
+                      <span className="font-bold text-destructive">{app.test_score}%</span>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-xs text-muted-foreground">These candidates will be notified: "Better luck next time, good luck!"</p>
+              </div>
+            )}
+
+            {qualifyingApps.length === 0 && failedApps.length === 0 && (
+              <p className="text-xs text-muted-foreground text-center py-2">
+                No candidates have completed the test yet.
+              </p>
+            )}
 
             <div className="flex gap-3">
               <Button
@@ -1496,7 +1516,7 @@ const HRCandidatesView = ({ companyId }: Props) => {
               </Button>
               <Button
                 onClick={handleBulkApprove}
-                disabled={qualifyingApps.length === 0 || bulkApproving}
+                disabled={(qualifyingApps.length === 0 && failedApps.length === 0) || bulkApproving}
                 className="flex-1 gap-2 bg-primary text-primary-foreground"
               >
                 {bulkApproving ? (
@@ -1504,7 +1524,7 @@ const HRCandidatesView = ({ companyId }: Props) => {
                 ) : (
                   <CheckCheck className="h-4 w-4" />
                 )}
-                {bulkApproving ? "Approving..." : `Approve ${qualifyingApps.length} Candidates`}
+                {bulkApproving ? "Processing..." : `Approve ${qualifyingApps.length} & Reject ${failedApps.length}`}
               </Button>
             </div>
           </div>
