@@ -94,7 +94,7 @@ const AddJobPanel = ({ open, onOpenChange, companyId, hrUserId, managers, onJobC
     setForm({
       title: "", department: "", managerId: "", salaryMin: "", salaryMax: "",
       location: "", workType: "Onsite", experienceMin: "", experienceMax: "",
-      skills: [], description: "",
+      skills: [], description: "", aptitudeCutoff: 60,
     });
     onOpenChange(false);
     onJobCreated();
