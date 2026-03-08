@@ -63,7 +63,7 @@ const CandidateSignup = () => {
       description: "Please login to continue.",
     });
 
-    setTimeout(() => navigate("/login"), 1500);
+    setTimeout(() => navigate("/candidate-dashboard"), 1500);
     setLoading(false);
   };
 
