@@ -40,6 +40,7 @@ const HRDashboard = () => {
   const [activeNav, setActiveNav] = useState("Dashboard");
   const [hrName, setHrName] = useState("");
   const [hrUserId, setHrUserId] = useState("");
+  const [userRole, setUserRole] = useState<"hr" | "manager">("hr");
   const [companyName, setCompanyName] = useState("");
   const [companyId, setCompanyId] = useState("");
   const [jobs, setJobs] = useState<JobRow[]>([]);
