@@ -9,7 +9,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import AddJobPanel from "@/components/AddJobPanel";
 import HRJobsView from "@/components/hr/HRJobsView";
 import HRCandidatesView from "@/components/hr/HRCandidatesView";
-import AptitudeCutoffCard from "@/components/hr/AptitudeCutoffCard";
 import { useToast } from "@/hooks/use-toast";
 
 interface JobRow {
