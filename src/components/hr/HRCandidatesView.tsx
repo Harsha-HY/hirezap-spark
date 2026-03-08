@@ -31,6 +31,7 @@ interface Application {
   test_score: number | null;
   technical_score: number | null;
   code_answers: any;
+  cover_letter: string | null;
 }
 
 interface Props {
