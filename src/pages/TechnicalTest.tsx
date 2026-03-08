@@ -152,95 +152,44 @@ const TechnicalTest = () => {
     setSubmitting(true);
 
     try {
-      // Save all answers as test_answers
+      toast({ title: "📤 Submitting...", description: "AI is analyzing your code. This may take a moment." });
+
+      // Save MCQ answers to test_answers table
+      const mcqStartIdx = dsaProblems.length + codingTasks.length;
       const allAnswers: any[] = [];
-      let idx = 0;
-
-      // DSA answers
-      dsaProblems.forEach((_, i) => {
-        allAnswers.push({
-          application_id: application.id,
-          question_index: idx,
-          selected_option: null, // Code answers stored differently
-          time_spent_seconds: 0,
-        });
-        idx++;
-      });
-
-      // Coding answers
-      codingTasks.forEach((_, i) => {
-        allAnswers.push({
-          application_id: application.id,
-          question_index: idx,
-          selected_option: null,
-          time_spent_seconds: 0,
-        });
-        idx++;
-      });
-
-      // MCQ answers
       mcqQuestions.forEach((_, i) => {
         allAnswers.push({
           application_id: application.id,
-          question_index: idx,
+          question_index: mcqStartIdx + i,
           selected_option: mcqAnswers[i] ?? null,
           time_spent_seconds: 0,
         });
-        idx++;
       });
-
       if (allAnswers.length > 0) {
         await supabase.from("test_answers").insert(allAnswers);
       }
 
-      // Calculate MCQ score
-      let mcqCorrect = 0;
-      mcqQuestions.forEach((q, i) => {
-        const selected = mcqAnswers[i];
-        if (selected !== null && selected !== undefined) {
-          const correctIdx = q.correct_answer.charCodeAt(0) - 65;
-          if (selected === correctIdx) mcqCorrect++;
-        }
+      // Call AI scoring edge function
+      const { data, error } = await supabase.functions.invoke("score-technical", {
+        body: {
+          applicationId: application.id,
+          dsaProblems,
+          codingTasks,
+          mcqQuestions,
+          dsaAnswers,
+          codingAnswers,
+          mcqAnswers,
+        },
       });
-      const mcqScore = mcqQuestions.length > 0 ? Math.round((mcqCorrect / mcqQuestions.length) * 100) : 0;
 
-      // For now, technical score = MCQ score (DSA/coding need manual/AI review)
-      const technicalScore = mcqScore;
-
-      // Update application
-      await supabase.from("applications").update({
-        current_stage: "technical_completed",
-        technical_score: technicalScore,
-      }).eq("id", application.id);
-
-      // Notify staff
-      const { data: job } = await supabase.from("jobs").select("company_id, title").eq("id", application.job_id).maybeSingle();
-      if (job) {
-        const { data: staffUsers } = await supabase
-          .from("users")
-          .select("id")
-          .eq("company_id", job.company_id)
-          .in("role", ["hr", "manager"]);
-
-        const { data: candidateUser } = await supabase.from("users").select("full_name").eq("id", application.candidate_id).maybeSingle();
-        const candidateName = candidateUser?.full_name || "A candidate";
-
-        if (staffUsers) {
-          const notifs = staffUsers.map((s) => ({
-            user_id: s.id,
-            title: "📝 Technical Round Completed!",
-            message: `${candidateName} completed the Technical Round for ${job.title}. MCQ Score: ${mcqScore}/100. Violations: ${violations.length}. Review the full report.`,
-          }));
-          if (notifs.length > 0) await supabase.from("notifications").insert(notifs);
-        }
-      }
+      if (error) throw error;
 
       setSubmitted(true);
-      toast({ title: "✅ Test Submitted!", description: "Your technical test has been submitted for review." });
+      toast({ title: "✅ Test Submitted!", description: "Your technical test has been submitted and AI analysis is complete." });
     } catch (e: any) {
       toast({ title: "Error", description: e.message, variant: "destructive" });
+      setSubmitting(false);
     }
-    setSubmitting(false);
   };
 
   const formatTime = (seconds: number) => {
