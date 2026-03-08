@@ -48,6 +48,15 @@ const CandidateDashboard = () => {
   const [notifications, setNotifications] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeSidebar, setActiveSidebar] = useState("Dashboard");
+  const [offerLetter, setOfferLetter] = useState<any>(null);
+  const [companyName, setCompanyName] = useState("");
+  const [interviews, setInterviews] = useState<any[]>([]);
+  const [bgvDocs, setBgvDocs] = useState<any[]>([]);
+  const [uploading, setUploading] = useState<string | null>(null);
+  const [negotiationOpen, setNegotiationOpen] = useState(false);
+  const [declineOpen, setDeclineOpen] = useState(false);
+  const [declineReason, setDeclineReason] = useState("");
+  const { toast } = useToast();
   const navigate = useNavigate();
 
   useEffect(() => {
