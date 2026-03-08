@@ -169,25 +169,44 @@ const HRCandidatesView = ({ companyId }: Props) => {
   };
 
   const handleOpenAptitudeTest = async (app: Application & { candidate_name: string; job_title: string }) => {
-    // Update stage
-    await supabase
-      .from("applications")
-      .update({ current_stage: "aptitude_test" })
-      .eq("id", app.id);
-
-    // Send notification to candidate
-    await supabase.from("notifications").insert({
-      user_id: app.candidate_id,
-      title: "🎉 You are shortlisted!",
-      message: `Congratulations! Your resume for "${app.job_title}" has been reviewed and you are selected for the Aptitude Test round. Login to take your test. Complete within 12 hours.`,
-    });
-
+    setGeneratingTestFor(app.id);
     toast({
-      title: "Aptitude Test Opened",
-      description: `${app.candidate_name} has been notified to take the aptitude test.`,
+      title: "🤖 Generating Questions...",
+      description: "AI is creating 40 aptitude questions for this role. Please wait.",
     });
 
-    fetchApplications();
+    try {
+      // Get HR user id
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      const { data: hrUser } = await supabase
+        .from("users")
+        .select("id")
+        .eq("user_id", session.user.id)
+        .maybeSingle();
+
+      const { data, error } = await supabase.functions.invoke("generate-assessment", {
+        body: {
+          jobId: app.job_id,
+          applicationId: app.id,
+          companyId,
+          createdBy: hrUser?.id,
+        },
+      });
+
+      if (error) throw error;
+
+      if (data?.assessmentId) {
+        toast({
+          title: "🤖 AI has created 40 aptitude questions!",
+          description: "Please review before sending to candidate. Nothing sent yet.",
+        });
+        navigate(`/review-assessment/${data.assessmentId}`);
+      }
+    } catch (e: any) {
+      toast({ title: "Error", description: e.message || "Failed to generate questions", variant: "destructive" });
+    }
+    setGeneratingTestFor(null);
   };
 
   const handleViewTestResults = async (app: any) => {
