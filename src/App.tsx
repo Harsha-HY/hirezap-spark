@@ -9,7 +9,7 @@ import CandidateSignup from "./pages/CandidateSignup";
 import Jobs from "./pages/Jobs";
 import OwnerDashboard from "./pages/OwnerDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
-import ManagerDashboard from "./pages/ManagerDashboard";
+
 import HRDashboard from "./pages/HRDashboard";
 import CandidateDashboard from "./pages/CandidateDashboard";
 import AptitudeTest from "./pages/AptitudeTest";
@@ -52,7 +52,7 @@ const App = () => (
             path="/manager-dashboard"
             element={
               <ProtectedRoute requiredRole="manager">
-                <ManagerDashboard />
+                <HRDashboard />
               </ProtectedRoute>
             }
           />
@@ -67,7 +67,7 @@ const App = () => (
           <Route
             path="/review-assessment/:assessmentId"
             element={
-              <ProtectedRoute requiredRole="hr">
+              <ProtectedRoute requiredRole={["hr", "manager"]}>
                 <ReviewAssessment />
               </ProtectedRoute>
             }

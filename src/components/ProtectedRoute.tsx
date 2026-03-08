@@ -4,13 +4,15 @@ import { supabase } from "@/integrations/supabase/client";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
-  requiredRole: string;
+  requiredRole: string | string[];
 }
 
 const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) => {
   const [status, setStatus] = useState<"loading" | "authorized" | "unauthorized">("loading");
 
   useEffect(() => {
+    const roles = Array.isArray(requiredRole) ? requiredRole : [requiredRole];
+
     const check = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
@@ -23,7 +25,7 @@ const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) => {
         .eq("user_id", session.user.id)
         .single();
 
-      if (data?.role === requiredRole) {
+      if (data?.role && roles.includes(data.role)) {
         setStatus("authorized");
       } else {
         setStatus("unauthorized");

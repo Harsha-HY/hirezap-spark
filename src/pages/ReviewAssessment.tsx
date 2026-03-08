@@ -34,6 +34,7 @@ const ReviewAssessment = () => {
   const { assessmentId } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [userRole, setUserRole] = useState<string>("hr");
 
   const [loading, setLoading] = useState(true);
   const [assessment, setAssessment] = useState<any>(null);
@@ -68,6 +69,14 @@ const ReviewAssessment = () => {
 
   useEffect(() => {
     fetchAssessment();
+    // Detect user role for navigation
+    (async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        const { data } = await supabase.from("users").select("role").eq("user_id", session.user.id).maybeSingle();
+        if (data?.role) setUserRole(data.role);
+      }
+    })();
   }, [assessmentId]);
 
   const fetchAssessment = async () => {
@@ -81,7 +90,7 @@ const ReviewAssessment = () => {
 
     if (error || !data) {
       toast({ title: "Error", description: "Assessment not found", variant: "destructive" });
-      navigate("/hr-dashboard");
+      navigate(userRole === "manager" ? "/manager-dashboard" : "/hr-dashboard");
       return;
     }
 
@@ -315,7 +324,7 @@ const ReviewAssessment = () => {
       }
 
       toast({ title: "Approved!", description: "Test sent to candidate. They will be notified." });
-      navigate("/hr-dashboard");
+      navigate(userRole === "manager" ? "/manager-dashboard" : "/hr-dashboard");
     } catch (e: any) {
       toast({ title: "Error", description: e.message, variant: "destructive" });
     }
@@ -339,7 +348,7 @@ const ReviewAssessment = () => {
       <div className="sticky top-0 z-20 border-b border-border bg-background/80 backdrop-blur-md px-6 py-4">
         <div className="max-w-5xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="sm" onClick={() => navigate("/hr-dashboard")}>
+            <Button variant="ghost" size="sm" onClick={() => navigate(userRole === "manager" ? "/manager-dashboard" : "/hr-dashboard")}>
               <ArrowLeft className="h-4 w-4 mr-1" /> Back
             </Button>
             <div>

@@ -40,6 +40,7 @@ const HRDashboard = () => {
   const [activeNav, setActiveNav] = useState("Dashboard");
   const [hrName, setHrName] = useState("");
   const [hrUserId, setHrUserId] = useState("");
+  const [userRole, setUserRole] = useState<"hr" | "manager">("hr");
   const [companyName, setCompanyName] = useState("");
   const [companyId, setCompanyId] = useState("");
   const [jobs, setJobs] = useState<JobRow[]>([]);
@@ -59,7 +60,7 @@ const HRDashboard = () => {
 
     const { data: user } = await supabase
       .from("users")
-      .select("id, full_name, company_id")
+      .select("id, full_name, company_id, role")
       .eq("user_id", session.user.id)
       .maybeSingle();
 
@@ -67,6 +68,9 @@ const HRDashboard = () => {
 
     setHrName(user.full_name);
     setHrUserId(user.id);
+    if (user.role === "manager" || user.role === "hr") {
+      setUserRole(user.role as "hr" | "manager");
+    }
 
     if (user.company_id) {
       setCompanyId(user.company_id);
@@ -320,8 +324,8 @@ const HRDashboard = () => {
         </nav>
 
         <div className="border-t border-border px-4 py-4">
-          <p className="text-sm font-medium text-foreground truncate">{hrName || "HR Manager"}</p>
-          <p className="text-xs text-muted-foreground mb-3">HR Manager</p>
+          <p className="text-sm font-medium text-foreground truncate">{hrName || (userRole === "manager" ? "Manager" : "HR Manager")}</p>
+          <p className="text-xs text-muted-foreground mb-3">{userRole === "manager" ? "Hiring Manager" : "HR Manager"}</p>
           <button
             onClick={handleLogout}
             className="flex items-center gap-2 text-sm text-muted-foreground hover:text-destructive transition-colors"
@@ -335,7 +339,7 @@ const HRDashboard = () => {
       {/* Main */}
       <div className="ml-60 flex-1 flex flex-col">
         <header className="sticky top-0 z-20 flex items-center justify-between border-b border-border bg-background/80 backdrop-blur-md px-8 py-4">
-          <h1 className="text-xl font-bold text-foreground">{activeNav}</h1>
+          <h1 className="text-xl font-bold text-foreground">{userRole === "manager" ? "Hiring Manager — " : ""}{activeNav}</h1>
           <div className="flex items-center gap-4">
             <div className="relative">
               <button
