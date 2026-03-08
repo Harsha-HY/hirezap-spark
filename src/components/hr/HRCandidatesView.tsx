@@ -72,6 +72,8 @@ const HRCandidatesView = ({ companyId }: Props) => {
   const [testSections, setTestSections] = useState<any[]>([]);
   const [candidatePhotoUrl, setCandidatePhotoUrl] = useState<string | null>(null);
   const [generatingTestFor, setGeneratingTestFor] = useState<string | null>(null);
+  const [videoDialog, setVideoDialog] = useState<any>(null);
+  const [videoSignedUrl, setVideoSignedUrl] = useState<string | null>(null);
   const { toast } = useToast();
 
   const fetchApplications = async () => {
