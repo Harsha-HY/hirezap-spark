@@ -108,7 +108,7 @@ const ReviewAssessment = () => {
     setSections(newSections);
     await supabase
       .from("assessments")
-      .update({ questions: { sections: newSections } })
+      .update({ questions: JSON.parse(JSON.stringify({ sections: newSections })) })
       .eq("id", assessmentId);
   };
 
