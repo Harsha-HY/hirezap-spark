@@ -401,8 +401,9 @@ const AptitudeTest = () => {
     // Exit fullscreen
     try { await document.exitFullscreen(); } catch (e) {}
 
-    // Stop webcam
+    // Stop webcam & audio
     streamRef.current?.getTracks().forEach((t) => t.stop());
+    audioContextRef.current?.close();
 
     setPhase("submitted");
     setSubmitting(false);
