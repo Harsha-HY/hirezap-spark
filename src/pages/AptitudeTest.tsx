@@ -434,7 +434,7 @@ const AptitudeTest = () => {
         <div className="flex items-center justify-between max-w-4xl mx-auto">
           <div className="flex items-center gap-4">
             <span className="text-sm font-medium text-foreground">
-              Question {currentQ + 1} of 40
+              Question {currentQ + 1} of {totalQ}
             </span>
             <span className="text-xs text-muted-foreground">
               {question.section}
