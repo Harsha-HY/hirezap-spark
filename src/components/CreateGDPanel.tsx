@@ -58,7 +58,7 @@ const CreateGDPanel = ({ open, onOpenChange, companyId, userId, userName, userRo
     })();
   }, [companyId, open]);
 
-  // Load candidates when job selected
+  // Load candidates when job selected - exclude those already in a GD group
   useEffect(() => {
     if (!selectedJob) { setCandidates([]); return; }
     setLoadingCandidates(true);
@@ -75,7 +75,36 @@ const CreateGDPanel = ({ open, onOpenChange, companyId, userId, userName, userRo
         return;
       }
 
-      const candidateIds = [...new Set(apps.map(a => a.candidate_id))];
+      // Get all existing GD groups for this job to exclude already-assigned candidates
+      const { data: existingGDs } = await supabase
+        .from("group_discussions")
+        .select("id")
+        .eq("job_id", selectedJob);
+
+      let alreadyGroupedCandidateIds = new Set<string>();
+      if (existingGDs && existingGDs.length > 0) {
+        const gdIds = existingGDs.map(g => g.id);
+        const { data: existingGroups } = await supabase
+          .from("gd_groups")
+          .select("candidate_ids")
+          .in("gd_id", gdIds);
+        if (existingGroups) {
+          existingGroups.forEach((g: any) => {
+            (g.candidate_ids || []).forEach((id: string) => alreadyGroupedCandidateIds.add(id));
+          });
+        }
+      }
+
+      // Filter out already-grouped candidates
+      const filteredApps = apps.filter(a => !alreadyGroupedCandidateIds.has(a.candidate_id));
+
+      if (filteredApps.length === 0) {
+        setCandidates([]);
+        setLoadingCandidates(false);
+        return;
+      }
+
+      const candidateIds = [...new Set(filteredApps.map(a => a.candidate_id))];
       const { data: users } = await supabase
         .from("users")
         .select("id, full_name")
@@ -83,7 +112,7 @@ const CreateGDPanel = ({ open, onOpenChange, companyId, userId, userName, userRo
 
       const nameMap = Object.fromEntries((users || []).map(u => [u.id, u.full_name]));
 
-      setCandidates(apps.map(a => ({
+      setCandidates(filteredApps.map(a => ({
         id: a.id,
         candidate_id: a.candidate_id,
         candidate_name: nameMap[a.candidate_id] || "Unknown",
