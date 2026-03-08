@@ -55,6 +55,7 @@ const stageBadgeClass: Record<string, string> = {
 };
 
 const HRCandidatesView = ({ companyId }: Props) => {
+  const navigate = useNavigate();
   const [applications, setApplications] = useState<(Application & { candidate_name: string; candidate_email: string; job_title: string })[]>([]);
   const [loading, setLoading] = useState(true);
   const [resumeUrl, setResumeUrl] = useState<string | null>(null);
@@ -62,6 +63,7 @@ const HRCandidatesView = ({ companyId }: Props) => {
   const [testResultDialog, setTestResultDialog] = useState<any>(null);
   const [testAnswers, setTestAnswers] = useState<any[]>([]);
   const [testViolations, setTestViolations] = useState<any[]>([]);
+  const [generatingTestFor, setGeneratingTestFor] = useState<string | null>(null);
   const { toast } = useToast();
 
   const fetchApplications = async () => {
