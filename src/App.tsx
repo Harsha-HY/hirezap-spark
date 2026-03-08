@@ -61,6 +61,14 @@ const App = () => (
               </ProtectedRoute>
             }
           />
+          <Route
+            path="/aptitude-test"
+            element={
+              <ProtectedRoute requiredRole="candidate">
+                <AptitudeTest />
+              </ProtectedRoute>
+            }
+          />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
