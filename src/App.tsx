@@ -7,6 +7,7 @@ import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import OwnerDashboard from "./pages/OwnerDashboard";
 import NotFound from "./pages/NotFound";
+import ProtectedRoute from "./components/ProtectedRoute";
 
 const queryClient = new QueryClient();
 
@@ -20,7 +21,14 @@ const App = () => (
           <Route path="/" element={<Navigate to="/login" replace />} />
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
-          <Route path="/owner-dashboard" element={<OwnerDashboard />} />
+          <Route
+            path="/owner-dashboard"
+            element={
+              <ProtectedRoute requiredRole="owner">
+                <OwnerDashboard />
+              </ProtectedRoute>
+            }
+          />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
