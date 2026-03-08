@@ -472,7 +472,7 @@ const AptitudeTest = () => {
           transition={{ duration: 0.2 }}
         >
           <h2 className="text-lg font-semibold text-foreground mb-6">
-            {question.q}
+            {question.question}
           </h2>
 
           <div className="space-y-3">
