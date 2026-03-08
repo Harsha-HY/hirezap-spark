@@ -64,6 +64,9 @@ const HRCandidatesView = ({ companyId }: Props) => {
   const [testResultDialog, setTestResultDialog] = useState<any>(null);
   const [testAnswers, setTestAnswers] = useState<any[]>([]);
   const [testViolations, setTestViolations] = useState<any[]>([]);
+  const [testQuestions, setTestQuestions] = useState<any[]>([]);
+  const [testSections, setTestSections] = useState<any[]>([]);
+  const [candidatePhotoUrl, setCandidatePhotoUrl] = useState<string | null>(null);
   const [generatingTestFor, setGeneratingTestFor] = useState<string | null>(null);
   const { toast } = useToast();
 
