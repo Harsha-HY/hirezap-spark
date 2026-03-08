@@ -421,8 +421,11 @@ const AptitudeTest = () => {
   }
 
   // Test phase
-  const question = defaultQuestions[currentQ];
-  const progress = ((currentQ + 1) / 40) * 100;
+  const question = questions[currentQ];
+  const totalQ = questions.length;
+  const progress = ((currentQ + 1) / totalQ) * 100;
+
+  if (!question) return null;
 
   return (
     <div className="min-h-screen bg-background select-none">
