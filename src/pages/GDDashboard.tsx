@@ -20,6 +20,7 @@ interface GD {
   duration: number;
   status: string;
   instructions: string | null;
+  meeting_link?: string | null;
   created_at: string;
   job_title?: string;
 }
