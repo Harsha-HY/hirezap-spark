@@ -308,14 +308,25 @@ const TechnicalTest = () => {
                 </div>
                 <h3 className="text-base font-semibold text-foreground mb-2">{t.title}</h3>
                 <p className="text-sm text-muted-foreground mb-4 whitespace-pre-wrap">{t.description}</p>
-                <div>
-                  <label className="text-sm font-medium text-foreground mb-2 block">Your Code:</label>
-                  <Textarea
-                    value={codingAnswers[idx] || ""}
-                    onChange={(e) => setCodingAnswers({ ...codingAnswers, [idx]: e.target.value })}
-                    placeholder="Write your code here..."
-                    className="font-mono text-sm min-h-[200px]"
-                  />
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-sm font-medium text-foreground mb-2 block">💻 Your Code:</label>
+                    <Textarea
+                      value={codingAnswers[idx] || ""}
+                      onChange={(e) => setCodingAnswers({ ...codingAnswers, [idx]: e.target.value })}
+                      placeholder="// Write your complete code solution here...&#10;// Include imports, functions, and main logic"
+                      className="font-mono text-sm min-h-[250px] bg-muted/30 border-border"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-foreground mb-2 block">📋 Output / Notes:</label>
+                    <Textarea
+                      value={(codingAnswers[`${idx}_output`] as string) || ""}
+                      onChange={(e) => setCodingAnswers({ ...codingAnswers, [`${idx}_output`]: e.target.value })}
+                      placeholder="Paste your expected output, explain design decisions, or add any notes about your implementation..."
+                      className="text-sm min-h-[100px]"
+                    />
+                  </div>
                 </div>
               </motion.div>
             ))}
