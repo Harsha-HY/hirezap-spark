@@ -237,7 +237,8 @@ const CandidateDashboard = () => {
                       : rawStage === "test_completed" ? "video_intro"
                       : rawStage === "aptitude_test" && hasSubmittedCurrentTest ? "video_intro"
                       : rawStage === "shortlisted" ? "aptitude_test"
-                      : rawStage === "video_submitted" ? "group_discussion"
+                      : rawStage === "video_submitted" ? "technical_round"
+                      : rawStage === "technical_round" ? "technical_round"
                       : rawStage === "interview" ? "hr_interview"
                       : rawStage === "selected" ? "offer_letter"
                       : rawStage;
