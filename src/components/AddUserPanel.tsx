@@ -28,7 +28,7 @@ const AddUserPanel = ({ open, onOpenChange, type, companyId, onUserCreated }: Ad
   const update = (key: string, value: string) => setForm((p) => ({ ...p, [key]: value }));
 
   const isHR = type === "hr";
-  const title = isHR ? "Create HR Manager Account" : "Create Hiring Manager Account";
+  const title = isHR ? "Create HR Manager" : "Create Hiring Manager";
   const role = isHR ? "hr" : "manager";
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -43,49 +43,37 @@ const AddUserPanel = ({ open, onOpenChange, type, companyId, onUserCreated }: Ad
     }
     setLoading(true);
 
-    // Store current session to restore later
-    const { data: { session: currentSession } } = await supabase.auth.getSession();
-
-    const { data: authData, error: authErr } = await supabase.auth.signUp({
-      email: form.email,
-      password: form.password,
-      options: { emailRedirectTo: window.location.origin },
-    });
-
-    if (authErr || !authData.user) {
-      toast({ title: "Failed to create account", description: authErr?.message, variant: "destructive" });
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      toast({ title: "Not authenticated", variant: "destructive" });
       setLoading(false);
       return;
     }
 
-    const insertData: any = {
-      user_id: authData.user.id,
-      full_name: form.fullName,
+    const payload: Record<string, string> = {
       email: form.email,
+      password: form.password,
+      fullName: form.fullName,
       phone: form.phone,
       role,
-      company_id: companyId,
+      companyId,
     };
 
     if (!isHR && form.department) {
-      insertData.department = form.department;
+      payload.department = form.department;
     }
 
-    const { error: insertErr } = await supabase.from("users").insert(insertData);
+    const { data, error } = await supabase.functions.invoke("create-user", {
+      body: payload,
+    });
 
-    if (insertErr) {
-      toast({ title: "Failed to save user details", description: insertErr.message, variant: "destructive" });
+    if (error || data?.error) {
+      toast({ title: "Failed to create account", description: data?.error || error?.message, variant: "destructive" });
       setLoading(false);
       return;
     }
 
-    // Try to restore admin session
-    if (currentSession?.user?.email) {
-      // Note: This won't fully work without knowing the admin's password.
-      // In production, use an edge function for user creation.
-    }
-
-    const successMsg = isHR ? "✅ HR Manager created!" : "✅ Hiring Manager created!";
+    const successMsg = isHR ? "✅ HR Manager created successfully!" : "✅ Hiring Manager created!";
     toast({ title: successMsg, description: "Login details sent to their email." });
     setForm({ fullName: "", email: "", phone: "", department: "", password: "", confirmPassword: "" });
     onOpenChange(false);
