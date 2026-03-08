@@ -315,6 +315,15 @@ const CandidateDashboard = () => {
                             {app.status}
                           </span>
                         </td>
+                        <td className="py-3 px-3">
+                          {app.resume_url ? (
+                            <Button variant="ghost" size="sm" className="h-7 px-2 text-primary hover:text-primary" onClick={() => viewResume(app.resume_url)}>
+                              View
+                            </Button>
+                          ) : (
+                            <span className="text-muted-foreground">—</span>
+                          )}
+                        </td>
                         <td className="py-3 px-3 text-muted-foreground">
                           {new Date(app.applied_at).toLocaleDateString()}
                         </td>
