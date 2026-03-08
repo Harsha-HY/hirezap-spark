@@ -361,6 +361,25 @@ const CandidateDashboard = () => {
                               💻 Take Technical Test
                             </Button>
                           )}
+                          {isCurrent && stage.key === "group_discussion" && gdInfo && (
+                            <div className="flex flex-col gap-1">
+                              <span className="text-xs text-muted-foreground">
+                                📅 {gdInfo.scheduled_date} at {gdInfo.scheduled_time} • Group {gdInfo.group_name}
+                              </span>
+                              <span className="text-xs text-muted-foreground">Topic: {gdInfo.topic}</span>
+                              {gdInfo.meeting_link && (
+                                <a
+                                  href={gdInfo.meeting_link}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                >
+                                  <Button size="sm" className="bg-primary text-primary-foreground h-7 px-3 text-xs gap-1">
+                                    <ExternalLink className="h-3 w-3" /> Join GD Call
+                                  </Button>
+                                </a>
+                              )}
+                            </div>
+                          )}
                         </div>
                       </div>
                     );
