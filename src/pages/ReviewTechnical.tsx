@@ -274,86 +274,54 @@ const ReviewTechnical = () => {
     toast({ title: "✅ Question Added" });
   };
 
-  // Dual approval: HR and Manager
+  // Manager-only approval
   const handleApprove = async () => {
+    if (userRole !== "manager") {
+      toast({ title: "Not Authorized", description: "Only the Hiring Manager can approve technical questions.", variant: "destructive" });
+      return;
+    }
     setApproving(true);
     try {
-      const updateData: any = {};
-      if (userRole === "hr") {
-        updateData.hr_approved = true;
-        updateData.hr_approved_at = new Date().toISOString();
-      } else if (userRole === "manager") {
-        updateData.manager_approved = true;
-        updateData.manager_approved_at = new Date().toISOString();
-      }
+      await supabase.from("assessments").update({
+        manager_approved: true,
+        manager_approved_at: new Date().toISOString(),
+        status: "approved",
+        approved_at: new Date().toISOString(),
+      }).eq("id", assessmentId);
 
-      await supabase.from("assessments").update(updateData).eq("id", assessmentId);
-
-      // Refresh to check if both approved now
       const { data: refreshed } = await supabase.from("assessments").select("*").eq("id", assessmentId).maybeSingle();
-      if (refreshed) {
-        setAssessment(refreshed);
+      if (refreshed) setAssessment(refreshed);
 
-        // If BOTH approved → finalize
-        if (refreshed.hr_approved && refreshed.manager_approved) {
-          await supabase.from("assessments").update({
-            status: "approved",
-            approved_at: new Date().toISOString(),
-          }).eq("id", assessmentId);
+      // Notify HR
+      const { data: hrUsers } = await supabase
+        .from("users")
+        .select("id")
+        .eq("company_id", assessment.company_id)
+        .eq("role", "hr");
 
-          // Notify the OTHER role
-          const otherRole = userRole === "hr" ? "manager" : "hr";
-          const { data: otherUsers } = await supabase
-            .from("users")
-            .select("id")
-            .eq("company_id", assessment.company_id)
-            .eq("role", otherRole);
-
-          if (otherUsers && otherUsers.length > 0) {
-            await supabase.from("notifications").insert(
-              otherUsers.map((u) => ({
-                user_id: u.id,
-                title: "✅ Technical Assessment Fully Approved",
-                message: `Both HR and Manager have approved technical questions for ${candidateName}. Test sent to candidate.`,
-              }))
-            );
-          }
-
-          // Notify candidate and update stage
-          const { data: app } = await supabase.from("applications").select("candidate_id").eq("id", assessment.application_id).maybeSingle();
-          if (app) {
-            await supabase.from("applications").update({ current_stage: "technical_test" }).eq("id", assessment.application_id);
-            await supabase.from("notifications").insert({
-              user_id: app.candidate_id,
-              title: "💻 Technical Round Ready!",
-              message: "Congratulations! You are selected for the Technical Round. Login to take your technical test. Complete within 48 hours.",
-            });
-          }
-
-          toast({ title: "✅ Fully Approved!", description: "Both HR and Manager approved. Test sent to candidate." });
-          navigate(userRole === "manager" ? "/manager-dashboard" : "/hr-dashboard");
-        } else {
-          // Notify the other role that this role approved
-          const otherRole = userRole === "hr" ? "manager" : "hr";
-          const { data: otherUsers } = await supabase
-            .from("users")
-            .select("id")
-            .eq("company_id", assessment.company_id)
-            .eq("role", otherRole);
-
-          if (otherUsers && otherUsers.length > 0) {
-            await supabase.from("notifications").insert(
-              otherUsers.map((u) => ({
-                user_id: u.id,
-                title: `✅ ${userRole === "hr" ? "HR" : "Manager"} Approved Technical Questions`,
-                message: `${userRole === "hr" ? "HR" : "Hiring Manager"} approved technical questions for ${candidateName}. Your approval is still needed.`,
-              }))
-            );
-          }
-
-          toast({ title: "✅ Approved!", description: `Your approval recorded. Waiting for ${otherRole === "hr" ? "HR" : "Manager"} approval.` });
-        }
+      if (hrUsers && hrUsers.length > 0) {
+        await supabase.from("notifications").insert(
+          hrUsers.map((u) => ({
+            user_id: u.id,
+            title: "✅ Technical Questions Approved",
+            message: `Hiring Manager approved technical questions for ${candidateName}. Test has been sent to the candidate.`,
+          }))
+        );
       }
+
+      // Notify candidate and update stage
+      const { data: app } = await supabase.from("applications").select("candidate_id").eq("id", assessment.application_id).maybeSingle();
+      if (app) {
+        await supabase.from("applications").update({ current_stage: "technical_test" }).eq("id", assessment.application_id);
+        await supabase.from("notifications").insert({
+          user_id: app.candidate_id,
+          title: "💻 Technical Round Ready!",
+          message: "Congratulations! You are selected for the Technical Round. Login to take your technical test. Complete within 48 hours.",
+        });
+      }
+
+      toast({ title: "✅ Approved!", description: "Technical test sent to candidate. HR has been notified." });
+      navigate("/manager-dashboard");
     } catch (e: any) {
       toast({ title: "Error", description: e.message, variant: "destructive" });
     }
@@ -415,10 +383,8 @@ const ReviewTechnical = () => {
   };
 
   const totalQuestions = dsaProblems.length + codingTasks.length + mcqQuestions.length;
-  const hrApproved = assessment?.hr_approved;
   const managerApproved = assessment?.manager_approved;
   const isApproved = assessment?.status === "approved";
-  const alreadyApproved = userRole === "hr" ? hrApproved : managerApproved;
 
   if (loading) {
     return (
@@ -480,20 +446,14 @@ const ReviewTechnical = () => {
         {/* Approval Status */}
         <div className="rounded-xl border border-border bg-card p-5">
           <h3 className="text-sm font-semibold text-foreground mb-3">Approval Status</h3>
-          <div className="flex items-center gap-6 mb-3">
-            <div className="flex items-center gap-2">
-              {hrApproved ? <CheckCircle2 className="h-5 w-5 text-primary" /> : <Clock className="h-5 w-5 text-amber-500" />}
-              <span className="text-sm">HR Approval: <strong>{hrApproved ? "✅ Approved" : "⏳ Pending"}</strong></span>
-            </div>
-            <div className="flex items-center gap-2">
-              {managerApproved ? <CheckCircle2 className="h-5 w-5 text-primary" /> : <Clock className="h-5 w-5 text-amber-500" />}
-              <span className="text-sm">Manager Approval: <strong>{managerApproved ? "✅ Approved" : "⏳ Pending"}</strong></span>
-            </div>
+          <div className="flex items-center gap-2 mb-3">
+            {isApproved ? <CheckCircle2 className="h-5 w-5 text-primary" /> : <Clock className="h-5 w-5 text-amber-500" />}
+            <span className="text-sm">Manager Approval: <strong>{managerApproved ? "✅ Approved" : "⏳ Pending"}</strong></span>
           </div>
           {isApproved && (
-            <p className="text-sm text-primary font-medium">✅ Both approved — Test sent to candidate!</p>
+            <p className="text-sm text-primary font-medium">✅ Approved — Test sent to candidate!</p>
           )}
-          {!isApproved && !alreadyApproved && (
+          {!isApproved && userRole === "manager" && (
             <div className="mt-3 flex gap-2">
               <Button onClick={handleApprove} disabled={approving} className="bg-primary text-primary-foreground">
                 {approving ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Check className="h-4 w-4 mr-1" />}
@@ -501,8 +461,8 @@ const ReviewTechnical = () => {
               </Button>
             </div>
           )}
-          {!isApproved && alreadyApproved && (
-            <p className="text-sm text-muted-foreground mt-2">You've already approved. Waiting for {userRole === "hr" ? "Manager" : "HR"} approval.</p>
+          {!isApproved && userRole === "hr" && (
+            <p className="text-sm text-muted-foreground mt-2 italic">Only the Hiring Manager can approve. You will be notified once approved.</p>
           )}
         </div>
 
