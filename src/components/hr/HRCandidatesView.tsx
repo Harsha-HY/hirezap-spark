@@ -1544,6 +1544,28 @@ const HRCandidatesView = ({ companyId }: Props) => {
                   </div>
                 )}
 
+                {/* Violations during technical test */}
+                {techViolations.length > 0 && (
+                  <div>
+                    <h3 className="text-sm font-semibold text-foreground mb-2">⚠️ Proctoring Violations ({techViolations.length})</h3>
+                    <div className="space-y-2 max-h-48 overflow-y-auto">
+                      {techViolations.map((v: any) => (
+                        <div key={v.id} className="flex items-start gap-2 text-sm p-2 rounded-lg bg-destructive/5 border border-destructive/20">
+                          <span className="text-destructive text-xs font-medium uppercase shrink-0">{v.violation_type}</span>
+                          <span className="text-muted-foreground">—</span>
+                          <span className="text-foreground flex-1">{v.description}</span>
+                          {v.question_number !== null && (
+                            <span className="text-xs text-muted-foreground shrink-0">Q{v.question_number}</span>
+                          )}
+                          <span className="text-[10px] text-muted-foreground shrink-0">
+                            {new Date(v.created_at).toLocaleTimeString()}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {/* Action buttons */}
                 <div className="flex gap-2 pt-2">
                   <Button
