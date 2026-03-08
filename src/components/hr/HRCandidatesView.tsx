@@ -51,6 +51,7 @@ const stageLabel: Record<string, string> = {
   technical_test: "Technical Test",
   technical_completed: "Technical Done",
   group_discussion: "Group Discussion",
+  gd_completed: "GD Completed",
   interview: "HR Interview",
   selected: "Selected",
   rejected: "Rejected",
