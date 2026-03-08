@@ -179,7 +179,7 @@ const HRDashboard = () => {
   const renderContent = () => {
     switch (activeNav) {
       case "Jobs":
-        return <HRJobsView jobs={jobs} managers={managers} onPostJob={() => setPanelOpen(true)} />;
+        return <HRJobsView jobs={jobs} managers={managers} onPostJob={() => setPanelOpen(true)} onJobUpdated={fetchData} />;
       case "Candidates":
         return <HRCandidatesView companyId={companyId} />;
       case "Interviews":
