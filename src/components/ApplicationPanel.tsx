@@ -118,6 +118,28 @@ const ApplicationPanel = ({ open, onOpenChange, job, onSuccess }: ApplicationPan
       description: "We will review and get back to you.",
     });
 
+    // Trigger AI resume scoring in background (don't await - let it run async)
+    if (resumeUrl) {
+      // Get the application ID from the insert response
+      const { data: appData } = await supabase
+        .from("applications")
+        .select("id")
+        .eq("candidate_id", userData.id)
+        .eq("job_id", job.id)
+        .order("applied_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (appData) {
+        supabase.functions.invoke("score-resume", {
+          body: { applicationId: appData.id },
+        }).then((res) => {
+          if (res.error) console.error("AI scoring error:", res.error);
+          else console.log("AI scoring complete:", res.data);
+        });
+      }
+    }
+
     resetForm();
     onOpenChange(false);
     onSuccess?.();
