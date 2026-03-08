@@ -73,41 +73,23 @@ const AddCompanyPanel = ({ open, onOpenChange, onCompanyCreated }: AddCompanyPan
       return;
     }
 
-    // Create super admin auth user
-    const { data: authData, error: authErr } = await supabase.auth.signUp({
-      email: form.adminEmail,
-      password: form.adminPassword,
-      options: { emailRedirectTo: window.location.origin },
+    // Create super admin via edge function (preserves owner session)
+    const { data: createResult, error: createErr } = await supabase.functions.invoke("create-user", {
+      body: {
+        email: form.adminEmail,
+        password: form.adminPassword,
+        fullName: form.adminName,
+        phone: form.adminPhone,
+        role: "superadmin",
+        companyId: company.id,
+      },
     });
 
-    if (authErr || !authData.user) {
-      toast({ title: "Failed to create admin account", description: authErr?.message, variant: "destructive" });
+    if (createErr || createResult?.error) {
+      toast({ title: "Failed to create admin account", description: createResult?.error || createErr?.message, variant: "destructive" });
       setLoading(false);
       return;
     }
-
-    // Insert into users table
-    // We need to sign back in as owner after creating the admin user
-    const { error: insertErr } = await supabase.from("users").insert({
-      user_id: authData.user.id,
-      full_name: form.adminName,
-      email: form.adminEmail,
-      phone: form.adminPhone,
-      role: "superadmin",
-      company_id: company.id,
-    });
-
-    if (insertErr) {
-      toast({ title: "Failed to save admin details", description: insertErr.message, variant: "destructive" });
-      setLoading(false);
-      return;
-    }
-
-    // Re-auth as owner since signUp may have changed session
-    await supabase.auth.signInWithPassword({
-      email: session.user.email!,
-      password: "", // This won't work - we need a different approach
-    });
 
     toast({ title: "✅ Company created successfully!" });
     setForm({

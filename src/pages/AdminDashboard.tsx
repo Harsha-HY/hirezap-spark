@@ -117,7 +117,7 @@ const AdminDashboard = () => {
             </span>
           </div>
           {companyName && (
-            <p className="text-xs text-muted-foreground mt-2 truncate">{companyName}</p>
+            <p className="text-xs text-primary mt-2 truncate">{companyName}</p>
           )}
         </div>
 
