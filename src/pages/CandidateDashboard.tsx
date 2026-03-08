@@ -213,10 +213,11 @@ const CandidateDashboard = () => {
 
                 <div className="space-y-4">
                   {stages.map((stage, idx) => {
-                    const currentIdx = getStageIndex(applications[0].current_stage);
+                    const rawStage = applications[0].current_stage;
+                    const normalizedStage = rawStage === "applied" || rawStage === "ai_scored" ? "resume_review" : rawStage;
+                    const currentIdx = getStageIndex(normalizedStage);
                     const isCompleted = idx < currentIdx;
                     const isCurrent = idx === currentIdx;
-                    const isLocked = idx > currentIdx;
 
                     return (
                       <div key={stage.key} className="relative flex items-center gap-4 pl-2">
