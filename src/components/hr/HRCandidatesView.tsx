@@ -892,7 +892,7 @@ const HRCandidatesView = ({ companyId }: Props) => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {applications.map((app) => {
+                {displayedApps.map((app) => {
                   const nextStage = getNextStage(app.current_stage);
                   const canOpenTest = ["ai_scored", "shortlisted"].includes(app.current_stage);
                   const canViewResults = app.current_stage === "test_completed" || app.test_score !== null;
