@@ -1083,7 +1083,6 @@ const HRCandidatesView = ({ companyId }: Props) => {
                               variant="ghost"
                               size="sm"
                               onClick={async () => {
-                                // Persist soft-delete via status
                                 setApplications((prev) => prev.map((a) => a.id === app.id ? { ...a, status: "deleted" } : a));
                                 toast({ title: "Removed", description: `${app.candidate_name} moved to Deleted.` });
                                 await supabase.from("applications").update({ status: "deleted" }).eq("id", app.id);
@@ -1092,6 +1091,21 @@ const HRCandidatesView = ({ companyId }: Props) => {
                               title="Remove from list"
                             >
                               <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
+                          {(activeTab === "deleted" || activeTab === "rejected") && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={async () => {
+                                setApplications((prev) => prev.map((a) => a.id === app.id ? { ...a, status: "active", current_stage: app.current_stage === "rejected" ? "applied" : app.current_stage } : a));
+                                toast({ title: "Restored", description: `${app.candidate_name} restored to active list.` });
+                                await supabase.from("applications").update({ status: "active", current_stage: app.current_stage === "rejected" ? "applied" : app.current_stage }).eq("id", app.id);
+                              }}
+                              className="text-primary hover:text-primary text-xs gap-1"
+                            >
+                              <RotateCcw className="h-3.5 w-3.5" />
+                              Restore
                             </Button>
                           )}
                         </div>
