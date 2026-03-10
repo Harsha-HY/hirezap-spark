@@ -3,7 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { FileText, ArrowRight, XCircle, BookOpen, Eye, Loader2, Video, Play, Code2, Filter, CheckCheck, Users, Calendar } from "lucide-react";
+import { FileText, ArrowRight, XCircle, BookOpen, Eye, Loader2, Video, Play, Code2, Filter, CheckCheck, Users, Calendar, AlertTriangle, Trash2, RotateCcw } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Slider } from "@/components/ui/slider";
 import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
@@ -117,6 +118,7 @@ const HRCandidatesView = ({ companyId }: Props) => {
   const [detailsPhotoUrl, setDetailsPhotoUrl] = useState<string | null>(null);
   const [detailsResumeUrl, setDetailsResumeUrl] = useState<string | null>(null);
   const [bulkMovingToGD, setBulkMovingToGD] = useState(false);
+  const [activeTab, setActiveTab] = useState("active");
   const { toast } = useToast();
 
   // Detect current user role and name
@@ -799,11 +801,22 @@ const HRCandidatesView = ({ companyId }: Props) => {
     );
   }
 
+  const activeApplications = applications.filter((a) => a.status !== "deleted" && a.status !== "rejected");
+  const deletedApplications = applications.filter((a) => a.status === "deleted");
+  const rejectedApplications = applications.filter((a) => a.status === "rejected");
+  const displayedApps = activeTab === "active" ? activeApplications : activeTab === "deleted" ? deletedApplications : rejectedApplications;
+
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
       <div className="rounded-xl border border-border bg-card">
         <div className="px-6 py-4 border-b border-border flex items-center justify-between gap-4 flex-wrap">
-          <h2 className="text-lg font-semibold text-foreground">All Candidates ({applications.length})</h2>
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-auto">
+            <TabsList>
+              <TabsTrigger value="active">Active ({activeApplications.length})</TabsTrigger>
+              <TabsTrigger value="rejected">Rejected ({rejectedApplications.length})</TabsTrigger>
+              <TabsTrigger value="deleted">Deleted ({deletedApplications.length})</TabsTrigger>
+            </TabsList>
+          </Tabs>
           <div className="flex items-center gap-2 flex-wrap">
             {aptitudeEligibleApps.length > 0 && (
               <Button
@@ -855,8 +868,10 @@ const HRCandidatesView = ({ companyId }: Props) => {
           </div>
         </div>
 
-        {applications.length === 0 ? (
-          <div className="p-12 text-center text-muted-foreground">No candidates have applied yet.</div>
+        {displayedApps.length === 0 ? (
+          <div className="p-12 text-center text-muted-foreground">
+            {activeTab === "active" ? "No active candidates." : activeTab === "deleted" ? "No deleted candidates." : "No rejected candidates."}
+          </div>
         ) : (
           <div className="overflow-x-auto">
             <Table>
@@ -877,7 +892,7 @@ const HRCandidatesView = ({ companyId }: Props) => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {applications.map((app) => {
+                {displayedApps.map((app) => {
                   const nextStage = getNextStage(app.current_stage);
                   const canOpenTest = ["ai_scored", "shortlisted"].includes(app.current_stage);
                   const canViewResults = app.current_stage === "test_completed" || app.test_score !== null;
@@ -1064,18 +1079,33 @@ const HRCandidatesView = ({ companyId }: Props) => {
                             </Button>
                           )}
                           {app.current_stage !== "rejected" && app.current_stage !== "selected" && (
-                            <Button
+                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => {
-                                // Soft remove: just hide from active list
-                                setApplications((prev) => prev.filter((a) => a.id !== app.id));
-                                toast({ title: "Removed", description: `${app.candidate_name} removed from the list.` });
+                              onClick={async () => {
+                                setApplications((prev) => prev.map((a) => a.id === app.id ? { ...a, status: "deleted" } : a));
+                                toast({ title: "Removed", description: `${app.candidate_name} moved to Deleted.` });
+                                await supabase.from("applications").update({ status: "deleted" }).eq("id", app.id);
                               }}
                               className="text-destructive hover:text-destructive text-xs"
                               title="Remove from list"
                             >
-                              <XCircle className="h-3.5 w-3.5" />
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
+                          {(activeTab === "deleted" || activeTab === "rejected") && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={async () => {
+                                setApplications((prev) => prev.map((a) => a.id === app.id ? { ...a, status: "active", current_stage: app.current_stage === "rejected" ? "applied" : app.current_stage } : a));
+                                toast({ title: "Restored", description: `${app.candidate_name} restored to active list.` });
+                                await supabase.from("applications").update({ status: "active", current_stage: app.current_stage === "rejected" ? "applied" : app.current_stage }).eq("id", app.id);
+                              }}
+                              className="text-primary hover:text-primary text-xs gap-1"
+                            >
+                              <RotateCcw className="h-3.5 w-3.5" />
+                              Restore
                             </Button>
                           )}
                         </div>

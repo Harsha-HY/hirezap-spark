@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import {
   Zap, LayoutDashboard, Briefcase, MessageSquare, Settings,
   Bell, User, LogOut, CheckCircle2, Clock, Lock, FileText,
-  Upload, Video, ExternalLink
+  Upload, Video, ExternalLink, Search, Camera, Key
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
@@ -27,7 +27,9 @@ const stages = [
 const sidebarLinks = [
   { icon: LayoutDashboard, label: "Dashboard" },
   { icon: Briefcase, label: "My Applications" },
+  { icon: Search, label: "Browse Jobs" },
   { icon: MessageSquare, label: "Messages" },
+  { icon: User, label: "Profile" },
   { icon: Settings, label: "Settings" },
 ];
 
@@ -57,6 +59,13 @@ const CandidateDashboard = () => {
   const [gdInfo, setGdInfo] = useState<any>(null);
   const [declineOpen, setDeclineOpen] = useState(false);
   const [declineReason, setDeclineReason] = useState("");
+  const [browseJobs, setBrowseJobs] = useState<any[]>([]);
+  const [profileName, setProfileName] = useState("");
+  const [profilePhone, setProfilePhone] = useState("");
+  const [profileUpdating, setProfileUpdating] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [changingPassword, setChangingPassword] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -76,7 +85,8 @@ const CandidateDashboard = () => {
 
     if (!userData) return;
     setUser(userData);
-
+    setProfileName(userData.full_name);
+    setProfilePhone(userData.phone || "");
     const { data: apps } = await supabase
       .from("applications")
       .select("*, jobs(title, company_id, companies(company_name))")
@@ -156,6 +166,15 @@ const CandidateDashboard = () => {
       .limit(20);
 
     if (notifs) setNotifications(notifs);
+
+    // Fetch open jobs for browsing
+    const { data: openJobs } = await supabase
+      .from("jobs")
+      .select("id, title, department, location, work_type, salary_min, salary_max, skills_required, company_id, companies(company_name)")
+      .eq("status", "open")
+      .order("created_at", { ascending: false });
+    if (openJobs) setBrowseJobs(openJobs as any);
+
     setLoading(false);
   };
 
@@ -168,10 +187,16 @@ const CandidateDashboard = () => {
 
   const handleSidebarClick = (label: string) => {
     setActiveSidebar(label);
-    if (label === "My Applications") document.getElementById("my-applications")?.scrollIntoView({ behavior: "smooth", block: "start" });
-    if (label === "Messages") document.getElementById("messages")?.scrollIntoView({ behavior: "smooth", block: "start" });
-    if (label === "Settings") document.getElementById("settings")?.scrollIntoView({ behavior: "smooth", block: "start" });
-    if (label === "Dashboard") document.getElementById("dashboard-top")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    const targetMap: Record<string, string> = {
+      "My Applications": "my-applications",
+      "Browse Jobs": "browse-jobs",
+      "Messages": "messages",
+      "Profile": "profile-section",
+      "Settings": "settings",
+      "Dashboard": "dashboard-top",
+    };
+    const target = targetMap[label];
+    if (target) document.getElementById(target)?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
   const viewResume = async (resumeRef: string | null | undefined) => {
@@ -491,6 +516,63 @@ const CandidateDashboard = () => {
             )}
           </motion.div>
 
+          {/* Browse Jobs */}
+          <motion.div
+            id="browse-jobs"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.22 }}
+            className="rounded-2xl border border-border bg-card p-6"
+          >
+            <h4 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
+              <Search className="h-5 w-5 text-primary" />
+              Browse Open Positions
+            </h4>
+            {browseJobs.length === 0 ? (
+              <p className="text-center py-8 text-muted-foreground">No open positions available right now.</p>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {browseJobs.map((job: any) => {
+                  const alreadyApplied = applications.some((a) => a.job_id === job.id);
+                  return (
+                    <div key={job.id} className="rounded-xl border border-border bg-card p-4 hover:border-primary/30 transition-colors">
+                      <h5 className="font-semibold text-foreground">{job.title}</h5>
+                      <p className="text-sm text-muted-foreground">{(job as any).companies?.company_name || "—"}</p>
+                      <div className="flex flex-wrap gap-2 mt-2 text-xs text-muted-foreground">
+                        <span>📍 {job.location}</span>
+                        <span>• {job.work_type}</span>
+                        <span>• {job.department}</span>
+                        {job.salary_min && job.salary_max && (
+                          <span>• ₹{Number(job.salary_min).toLocaleString()} - ₹{Number(job.salary_max).toLocaleString()}</span>
+                        )}
+                      </div>
+                      {job.skills_required?.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-2">
+                          {job.skills_required.slice(0, 5).map((s: string) => (
+                            <span key={s} className="px-2 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] font-medium">{s}</span>
+                          ))}
+                        </div>
+                      )}
+                      <div className="mt-3">
+                        {alreadyApplied ? (
+                          <span className="text-xs font-medium text-primary">✅ Already Applied</span>
+                        ) : (
+                          <Button
+                            size="sm"
+                            onClick={() => navigate(`/jobs`)}
+                            className="h-7 px-3 text-xs bg-primary text-primary-foreground"
+                          >
+                            Apply Now
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </motion.div>
+
           {/* Upcoming Interviews */}
           {interviews.filter(i => i.status === "scheduled").length > 0 && (
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }} className="rounded-2xl border border-primary/30 bg-primary/5 p-6">
@@ -708,9 +790,102 @@ const CandidateDashboard = () => {
             )}
           </motion.div>
 
+          {/* Profile Section */}
+          <motion.div id="profile-section" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }} className="rounded-2xl border border-border bg-card p-6">
+            <h4 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
+              <User className="h-5 w-5 text-primary" />
+              My Profile
+            </h4>
+            <div className="space-y-4 max-w-md">
+              <div>
+                <label className="text-sm font-medium text-foreground">Full Name</label>
+                <Input value={profileName} onChange={(e) => setProfileName(e.target.value)} className="mt-1" />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-foreground">Email</label>
+                <Input value={user?.email || ""} disabled className="mt-1 opacity-60" />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-foreground">Phone</label>
+                <Input value={profilePhone} onChange={(e) => setProfilePhone(e.target.value)} placeholder="Enter phone number" className="mt-1" />
+              </div>
+              <Button
+                size="sm"
+                disabled={profileUpdating}
+                onClick={async () => {
+                  if (!user) return;
+                  setProfileUpdating(true);
+                  const { error } = await supabase.from("users").update({ full_name: profileName, phone: profilePhone }).eq("id", user.id);
+                  if (error) {
+                    toast({ title: "Error", description: error.message, variant: "destructive" });
+                  } else {
+                    toast({ title: "✅ Profile Updated" });
+                    setUser({ ...user, full_name: profileName, phone: profilePhone });
+                  }
+                  setProfileUpdating(false);
+                }}
+                className="bg-primary text-primary-foreground"
+              >
+                {profileUpdating ? "Saving..." : "Save Profile"}
+              </Button>
+            </div>
+
+            {/* Change Password */}
+            <div className="mt-8 pt-6 border-t border-border max-w-md">
+              <h5 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
+                <Key className="h-4 w-4 text-primary" />
+                Change Password
+              </h5>
+              <div className="space-y-3">
+                <div>
+                  <label className="text-sm font-medium text-foreground">Current Password</label>
+                  <Input type="password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} placeholder="Enter current password" className="mt-1" />
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-foreground">New Password</label>
+                  <Input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="Enter new password" className="mt-1" />
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={changingPassword || !currentPassword || !newPassword}
+                  onClick={async () => {
+                    if (!currentPassword || !newPassword) return;
+                    if (newPassword.length < 6) {
+                      toast({ title: "Error", description: "Password must be at least 6 characters.", variant: "destructive" });
+                      return;
+                    }
+                    setChangingPassword(true);
+                    // Verify current password by re-signing in
+                    const { error: signInError } = await supabase.auth.signInWithPassword({
+                      email: user?.email || "",
+                      password: currentPassword,
+                    });
+                    if (signInError) {
+                      toast({ title: "Error", description: "Current password is incorrect.", variant: "destructive" });
+                      setChangingPassword(false);
+                      return;
+                    }
+                    const { error } = await supabase.auth.updateUser({ password: newPassword });
+                    if (error) {
+                      toast({ title: "Error", description: error.message, variant: "destructive" });
+                    } else {
+                      toast({ title: "✅ Password Changed Successfully" });
+                      setCurrentPassword("");
+                      setNewPassword("");
+                    }
+                    setChangingPassword(false);
+                  }}
+                >
+                  {changingPassword ? "Changing..." : "Change Password"}
+                </Button>
+              </div>
+            </div>
+          </motion.div>
+
           <motion.div id="settings" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="rounded-2xl border border-border bg-card p-6">
             <h4 className="text-lg font-bold text-foreground mb-2">Settings</h4>
-            <p className="text-sm text-muted-foreground">Profile and notification settings will appear here.</p>
+            <p className="text-sm text-muted-foreground">Notification preferences coming soon.</p>
           </motion.div>
 
           {/* Negotiation Chat */}

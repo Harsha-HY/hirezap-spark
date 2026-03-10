@@ -98,8 +98,8 @@ const HRDashboard = () => {
             .select("id, current_stage")
             .in("job_id", jobIds);
           if (apps) {
-            setTotalApplications(apps.length);
-            setShortlistedCount(apps.filter((a: any) => ["shortlisted", "aptitude_test", "test_completed", "interview", "selected"].includes(a.current_stage)).length);
+            setTotalApplications(apps.filter((a: any) => a.status !== "rejected" && a.status !== "deleted").length);
+            setShortlistedCount(apps.filter((a: any) => ["shortlisted", "aptitude_test", "test_completed", "video_intro", "video_submitted", "technical_round", "technical_test", "technical_completed", "group_discussion", "gd_completed", "interview", "hr_interview"].includes(a.current_stage) && a.status !== "rejected" && a.status !== "deleted").length);
           }
         }
       }
