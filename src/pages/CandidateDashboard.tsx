@@ -187,10 +187,16 @@ const CandidateDashboard = () => {
 
   const handleSidebarClick = (label: string) => {
     setActiveSidebar(label);
-    if (label === "My Applications") document.getElementById("my-applications")?.scrollIntoView({ behavior: "smooth", block: "start" });
-    if (label === "Messages") document.getElementById("messages")?.scrollIntoView({ behavior: "smooth", block: "start" });
-    if (label === "Settings") document.getElementById("settings")?.scrollIntoView({ behavior: "smooth", block: "start" });
-    if (label === "Dashboard") document.getElementById("dashboard-top")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    const targetMap: Record<string, string> = {
+      "My Applications": "my-applications",
+      "Browse Jobs": "browse-jobs",
+      "Messages": "messages",
+      "Profile": "profile-section",
+      "Settings": "settings",
+      "Dashboard": "dashboard-top",
+    };
+    const target = targetMap[label];
+    if (target) document.getElementById(target)?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
   const viewResume = async (resumeRef: string | null | undefined) => {
