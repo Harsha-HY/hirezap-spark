@@ -516,6 +516,63 @@ const CandidateDashboard = () => {
             )}
           </motion.div>
 
+          {/* Browse Jobs */}
+          <motion.div
+            id="browse-jobs"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.22 }}
+            className="rounded-2xl border border-border bg-card p-6"
+          >
+            <h4 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
+              <Search className="h-5 w-5 text-primary" />
+              Browse Open Positions
+            </h4>
+            {browseJobs.length === 0 ? (
+              <p className="text-center py-8 text-muted-foreground">No open positions available right now.</p>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {browseJobs.map((job: any) => {
+                  const alreadyApplied = applications.some((a) => a.job_id === job.id);
+                  return (
+                    <div key={job.id} className="rounded-xl border border-border bg-card p-4 hover:border-primary/30 transition-colors">
+                      <h5 className="font-semibold text-foreground">{job.title}</h5>
+                      <p className="text-sm text-muted-foreground">{(job as any).companies?.company_name || "—"}</p>
+                      <div className="flex flex-wrap gap-2 mt-2 text-xs text-muted-foreground">
+                        <span>📍 {job.location}</span>
+                        <span>• {job.work_type}</span>
+                        <span>• {job.department}</span>
+                        {job.salary_min && job.salary_max && (
+                          <span>• ₹{Number(job.salary_min).toLocaleString()} - ₹{Number(job.salary_max).toLocaleString()}</span>
+                        )}
+                      </div>
+                      {job.skills_required?.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-2">
+                          {job.skills_required.slice(0, 5).map((s: string) => (
+                            <span key={s} className="px-2 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] font-medium">{s}</span>
+                          ))}
+                        </div>
+                      )}
+                      <div className="mt-3">
+                        {alreadyApplied ? (
+                          <span className="text-xs font-medium text-primary">✅ Already Applied</span>
+                        ) : (
+                          <Button
+                            size="sm"
+                            onClick={() => navigate(`/jobs`)}
+                            className="h-7 px-3 text-xs bg-primary text-primary-foreground"
+                          >
+                            Apply Now
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </motion.div>
+
           {/* Upcoming Interviews */}
           {interviews.filter(i => i.status === "scheduled").length > 0 && (
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }} className="rounded-2xl border border-primary/30 bg-primary/5 p-6">
