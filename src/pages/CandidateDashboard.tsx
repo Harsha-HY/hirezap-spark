@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import {
   Zap, LayoutDashboard, Briefcase, MessageSquare, Settings,
   Bell, User, LogOut, CheckCircle2, Clock, Lock, FileText,
-  Upload, Video, ExternalLink
+  Upload, Video, ExternalLink, Search, Camera, Key
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
