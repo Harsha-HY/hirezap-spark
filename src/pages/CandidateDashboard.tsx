@@ -790,9 +790,102 @@ const CandidateDashboard = () => {
             )}
           </motion.div>
 
+          {/* Profile Section */}
+          <motion.div id="profile-section" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }} className="rounded-2xl border border-border bg-card p-6">
+            <h4 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
+              <User className="h-5 w-5 text-primary" />
+              My Profile
+            </h4>
+            <div className="space-y-4 max-w-md">
+              <div>
+                <label className="text-sm font-medium text-foreground">Full Name</label>
+                <Input value={profileName} onChange={(e) => setProfileName(e.target.value)} className="mt-1" />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-foreground">Email</label>
+                <Input value={user?.email || ""} disabled className="mt-1 opacity-60" />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-foreground">Phone</label>
+                <Input value={profilePhone} onChange={(e) => setProfilePhone(e.target.value)} placeholder="Enter phone number" className="mt-1" />
+              </div>
+              <Button
+                size="sm"
+                disabled={profileUpdating}
+                onClick={async () => {
+                  if (!user) return;
+                  setProfileUpdating(true);
+                  const { error } = await supabase.from("users").update({ full_name: profileName, phone: profilePhone }).eq("id", user.id);
+                  if (error) {
+                    toast({ title: "Error", description: error.message, variant: "destructive" });
+                  } else {
+                    toast({ title: "✅ Profile Updated" });
+                    setUser({ ...user, full_name: profileName, phone: profilePhone });
+                  }
+                  setProfileUpdating(false);
+                }}
+                className="bg-primary text-primary-foreground"
+              >
+                {profileUpdating ? "Saving..." : "Save Profile"}
+              </Button>
+            </div>
+
+            {/* Change Password */}
+            <div className="mt-8 pt-6 border-t border-border max-w-md">
+              <h5 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
+                <Key className="h-4 w-4 text-primary" />
+                Change Password
+              </h5>
+              <div className="space-y-3">
+                <div>
+                  <label className="text-sm font-medium text-foreground">Current Password</label>
+                  <Input type="password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} placeholder="Enter current password" className="mt-1" />
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-foreground">New Password</label>
+                  <Input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="Enter new password" className="mt-1" />
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={changingPassword || !currentPassword || !newPassword}
+                  onClick={async () => {
+                    if (!currentPassword || !newPassword) return;
+                    if (newPassword.length < 6) {
+                      toast({ title: "Error", description: "Password must be at least 6 characters.", variant: "destructive" });
+                      return;
+                    }
+                    setChangingPassword(true);
+                    // Verify current password by re-signing in
+                    const { error: signInError } = await supabase.auth.signInWithPassword({
+                      email: user?.email || "",
+                      password: currentPassword,
+                    });
+                    if (signInError) {
+                      toast({ title: "Error", description: "Current password is incorrect.", variant: "destructive" });
+                      setChangingPassword(false);
+                      return;
+                    }
+                    const { error } = await supabase.auth.updateUser({ password: newPassword });
+                    if (error) {
+                      toast({ title: "Error", description: error.message, variant: "destructive" });
+                    } else {
+                      toast({ title: "✅ Password Changed Successfully" });
+                      setCurrentPassword("");
+                      setNewPassword("");
+                    }
+                    setChangingPassword(false);
+                  }}
+                >
+                  {changingPassword ? "Changing..." : "Change Password"}
+                </Button>
+              </div>
+            </div>
+          </motion.div>
+
           <motion.div id="settings" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="rounded-2xl border border-border bg-card p-6">
             <h4 className="text-lg font-bold text-foreground mb-2">Settings</h4>
-            <p className="text-sm text-muted-foreground">Profile and notification settings will appear here.</p>
+            <p className="text-sm text-muted-foreground">Notification preferences coming soon.</p>
           </motion.div>
 
           {/* Negotiation Chat */}
