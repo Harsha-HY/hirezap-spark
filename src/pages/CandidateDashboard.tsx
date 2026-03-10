@@ -166,6 +166,15 @@ const CandidateDashboard = () => {
       .limit(20);
 
     if (notifs) setNotifications(notifs);
+
+    // Fetch open jobs for browsing
+    const { data: openJobs } = await supabase
+      .from("jobs")
+      .select("id, title, department, location, work_type, salary_min, salary_max, skills_required, company_id, companies(company_name)")
+      .eq("status", "open")
+      .order("created_at", { ascending: false });
+    if (openJobs) setBrowseJobs(openJobs as any);
+
     setLoading(false);
   };
 
