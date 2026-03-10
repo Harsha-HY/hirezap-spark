@@ -85,7 +85,8 @@ const CandidateDashboard = () => {
 
     if (!userData) return;
     setUser(userData);
-
+    setProfileName(userData.full_name);
+    setProfilePhone(userData.phone || "");
     const { data: apps } = await supabase
       .from("applications")
       .select("*, jobs(title, company_id, companies(company_name))")
