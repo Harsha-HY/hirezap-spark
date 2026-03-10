@@ -1066,18 +1066,19 @@ const HRCandidatesView = ({ companyId }: Props) => {
                             </Button>
                           )}
                           {app.current_stage !== "rejected" && app.current_stage !== "selected" && (
-                            <Button
+                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => {
-                                // Soft remove: just hide from active list
-                                setApplications((prev) => prev.filter((a) => a.id !== app.id));
-                                toast({ title: "Removed", description: `${app.candidate_name} removed from the list.` });
+                              onClick={async () => {
+                                // Persist soft-delete via status
+                                setApplications((prev) => prev.map((a) => a.id === app.id ? { ...a, status: "deleted" } : a));
+                                toast({ title: "Removed", description: `${app.candidate_name} moved to Deleted.` });
+                                await supabase.from("applications").update({ status: "deleted" }).eq("id", app.id);
                               }}
                               className="text-destructive hover:text-destructive text-xs"
                               title="Remove from list"
                             >
-                              <XCircle className="h-3.5 w-3.5" />
+                              <Trash2 className="h-3.5 w-3.5" />
                             </Button>
                           )}
                         </div>
