@@ -801,11 +801,22 @@ const HRCandidatesView = ({ companyId }: Props) => {
     );
   }
 
+  const activeApplications = applications.filter((a) => a.status !== "deleted" && a.status !== "rejected");
+  const deletedApplications = applications.filter((a) => a.status === "deleted");
+  const rejectedApplications = applications.filter((a) => a.status === "rejected");
+  const displayedApps = activeTab === "active" ? activeApplications : activeTab === "deleted" ? deletedApplications : rejectedApplications;
+
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
       <div className="rounded-xl border border-border bg-card">
         <div className="px-6 py-4 border-b border-border flex items-center justify-between gap-4 flex-wrap">
-          <h2 className="text-lg font-semibold text-foreground">All Candidates ({applications.length})</h2>
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-auto">
+            <TabsList>
+              <TabsTrigger value="active">Active ({activeApplications.length})</TabsTrigger>
+              <TabsTrigger value="rejected">Rejected ({rejectedApplications.length})</TabsTrigger>
+              <TabsTrigger value="deleted">Deleted ({deletedApplications.length})</TabsTrigger>
+            </TabsList>
+          </Tabs>
           <div className="flex items-center gap-2 flex-wrap">
             {aptitudeEligibleApps.length > 0 && (
               <Button
@@ -857,8 +868,10 @@ const HRCandidatesView = ({ companyId }: Props) => {
           </div>
         </div>
 
-        {applications.length === 0 ? (
-          <div className="p-12 text-center text-muted-foreground">No candidates have applied yet.</div>
+        {displayedApps.length === 0 ? (
+          <div className="p-12 text-center text-muted-foreground">
+            {activeTab === "active" ? "No active candidates." : activeTab === "deleted" ? "No deleted candidates." : "No rejected candidates."}
+          </div>
         ) : (
           <div className="overflow-x-auto">
             <Table>
