@@ -27,7 +27,9 @@ const stages = [
 const sidebarLinks = [
   { icon: LayoutDashboard, label: "Dashboard" },
   { icon: Briefcase, label: "My Applications" },
+  { icon: Search, label: "Browse Jobs" },
   { icon: MessageSquare, label: "Messages" },
+  { icon: User, label: "Profile" },
   { icon: Settings, label: "Settings" },
 ];
 
