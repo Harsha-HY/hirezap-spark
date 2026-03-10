@@ -59,6 +59,13 @@ const CandidateDashboard = () => {
   const [gdInfo, setGdInfo] = useState<any>(null);
   const [declineOpen, setDeclineOpen] = useState(false);
   const [declineReason, setDeclineReason] = useState("");
+  const [browseJobs, setBrowseJobs] = useState<any[]>([]);
+  const [profileName, setProfileName] = useState("");
+  const [profilePhone, setProfilePhone] = useState("");
+  const [profileUpdating, setProfileUpdating] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [changingPassword, setChangingPassword] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
 
