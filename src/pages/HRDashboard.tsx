@@ -192,11 +192,11 @@ const HRDashboard = () => {
         return <HRInterviewsView companyId={companyId} />;
       case "Messages":
         return (
-          <div className="rounded-xl border border-border bg-card p-8 text-center">
-            <MessageSquare className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <h2 className="text-lg font-semibold text-foreground">Messages</h2>
-            <p className="text-sm text-muted-foreground mt-2">Messaging module coming soon.</p>
-          </div>
+          <ChatSystem
+            currentUser={{ id: hrUserId, full_name: hrName, email: "", role: userRole, company_id: companyId }}
+            mode="staff"
+            companyId={companyId}
+          />
         );
       case "Analytics":
         return (

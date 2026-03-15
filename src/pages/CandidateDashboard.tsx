@@ -762,32 +762,16 @@ const CandidateDashboard = () => {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
-            className="rounded-2xl border border-border bg-card p-6"
           >
             <h4 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
               <MessageSquare className="h-5 w-5 text-primary" />
-              Messages from HR
+              Messages
             </h4>
-
-            {notifications.length === 0 ? (
-              <p className="text-center py-8 text-muted-foreground">No messages yet.</p>
-            ) : (
-              <div className="space-y-3">
-                {notifications.map((n) => (
-                  <div
-                    key={n.id}
-                    className={`rounded-xl border p-4 transition-colors ${
-                      n.read ? "border-border bg-card" : "border-primary/30 bg-primary/5"
-                    }`}
-                  >
-                    <p className="text-sm font-medium text-foreground">{n.title}</p>
-                    <p className="text-sm text-muted-foreground mt-1 whitespace-pre-line">{n.message}</p>
-                    <p className="text-xs text-muted-foreground mt-2">
-                      {new Date(n.created_at).toLocaleString()}
-                    </p>
-                  </div>
-                ))}
-              </div>
+            {user && (
+              <ChatSystem
+                currentUser={{ id: user.id, full_name: user.full_name, email: user.email, role: "candidate" }}
+                mode="candidate"
+              />
             )}
           </motion.div>
 
