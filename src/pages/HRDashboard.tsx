@@ -10,6 +10,7 @@ import AddJobPanel from "@/components/AddJobPanel";
 import HRJobsView from "@/components/hr/HRJobsView";
 import HRCandidatesView from "@/components/hr/HRCandidatesView";
 import HRInterviewsView from "@/components/hr/HRInterviewsView";
+import ChatSystem from "@/components/ChatSystem";
 import { useToast } from "@/hooks/use-toast";
 
 interface JobRow {
