@@ -226,6 +226,36 @@ export type Database = {
           },
         ]
       }
+      chat_messages: {
+        Row: {
+          attachment_url: string | null
+          created_at: string
+          id: string
+          is_read: boolean
+          message: string
+          receiver_id: string
+          sender_id: string
+        }
+        Insert: {
+          attachment_url?: string | null
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          message: string
+          receiver_id: string
+          sender_id: string
+        }
+        Update: {
+          attachment_url?: string | null
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          message?: string
+          receiver_id?: string
+          sender_id?: string
+        }
+        Relationships: []
+      }
       companies: {
         Row: {
           company_code: string
