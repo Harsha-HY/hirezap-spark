@@ -71,28 +71,16 @@ async function processVideoAnalysis(supabase: any, application: any, lovableApiK
       .eq("id", application.candidate_id)
       .maybeSingle();
 
-    // Download video — limit to first 1.5MB to avoid memory issues
-    const { data: videoData, error: videoErr } = await supabase.storage
+    // Create a long-lived signed URL for the video (valid 1 hour)
+    const { data: signedData, error: signedErr } = await supabase.storage
       .from("videos")
-      .download(application.video_url);
+      .createSignedUrl(application.video_url, 3600);
 
-    if (videoErr || !videoData) {
-      throw new Error("Could not download video: " + (videoErr?.message || ""));
+    if (signedErr || !signedData?.signedUrl) {
+      throw new Error("Could not create signed URL for video: " + (signedErr?.message || ""));
     }
 
-    const fullBytes = new Uint8Array(await videoData.arrayBuffer());
-    // Take at most 1.5MB to stay within memory limits
-    const maxBytes = 1.5 * 1024 * 1024;
-    const videoBytes = fullBytes.length > maxBytes ? fullBytes.slice(0, maxBytes) : fullBytes;
-
-    // Convert to base64 in chunks to avoid stack overflow
-    let binary = "";
-    const chunkSize = 8192;
-    for (let i = 0; i < videoBytes.length; i += chunkSize) {
-      const chunk = videoBytes.subarray(i, Math.min(i + chunkSize, videoBytes.length));
-      binary += String.fromCharCode(...chunk);
-    }
-    const videoBase64 = btoa(binary);
+    const videoUrl = signedData.signedUrl;
 
     const prompt = `You are an expert HR recruitment analyst reviewing a candidate's video introduction.
 
@@ -100,39 +88,50 @@ Candidate: ${candidate?.full_name || "Unknown"}
 Applied for: ${job?.title || "Unknown"} (${job?.department || ""})
 Required Skills: ${(job?.skills_required || []).join(", ") || "Not specified"}
 
+IMPORTANT: You are analyzing a video recording. Watch and listen carefully to evaluate ALL aspects including visual body language and audio speech quality.
+
 Analyze this video introduction thoroughly and evaluate the candidate on these parameters:
 
-1. Energy Level - How enthusiastic, motivated, and energetic is the candidate?
-2. Eye Contact - Does the candidate maintain good eye contact with the camera?
-3. English Fluency - How fluent is their English? Grammar, pronunciation, flow.
-4. Vocabulary - Quality and richness of vocabulary used.
-5. Communication Skills - Clarity of expression, structure of thoughts, articulation.
-6. Confidence - How confident does the candidate appear?
-7. Body Language - Posture, gestures, facial expressions.
-8. Content Quality - Relevance and depth of what they talked about.
-9. Professionalism - Overall professional demeanor and presentation.
-10. Overall Impression - General suitability for the role.
+1. Energy Level - How enthusiastic, motivated, and energetic is the candidate? Look at facial expressions, voice tone, and gestures.
+2. Eye Contact - Does the candidate maintain good eye contact with the camera? Are they looking at the camera or looking away?
+3. English Fluency - How fluent is their English? Listen for grammar, pronunciation, flow, hesitations, filler words.
+4. Vocabulary - Quality and richness of vocabulary used. Are they using professional and varied language?
+5. Communication Skills - Clarity of expression, structure of thoughts, articulation. Can they convey ideas clearly?
+6. Confidence - How confident does the candidate appear? Voice steadiness, posture, lack of nervousness.
+7. Body Language - Posture, gestures, facial expressions. Are they sitting upright? Using hand gestures appropriately?
+8. Content Quality - Relevance and depth of what they talked about. Did they cover their background, skills, and motivation?
+9. Professionalism - Overall professional demeanor and presentation. Appropriate attire, background, and manner.
+10. Overall Impression - General suitability for the role based on all factors.
+
+SCORING GUIDELINES:
+- Be STRICT and REALISTIC. Do NOT give inflated scores.
+- Score 1-3: Poor performance in this area
+- Score 4-5: Below average, needs improvement
+- Score 6-7: Average to good
+- Score 8-9: Very good
+- Score 10: Exceptional, outstanding
+- Most candidates should score between 4-7 on average metrics. Only truly exceptional candidates get 8+.
 
 Return ONLY valid JSON with these exact fields:
 {
   "overall_score": number 0-100,
-  "energy_level": { "score": number 0-10, "feedback": "1-2 sentences" },
-  "eye_contact": { "score": number 0-10, "feedback": "1-2 sentences" },
-  "english_fluency": { "score": number 0-10, "feedback": "1-2 sentences" },
-  "vocabulary": { "score": number 0-10, "feedback": "1-2 sentences" },
-  "communication_skills": { "score": number 0-10, "feedback": "1-2 sentences" },
-  "confidence": { "score": number 0-10, "feedback": "1-2 sentences" },
-  "body_language": { "score": number 0-10, "feedback": "1-2 sentences" },
-  "content_quality": { "score": number 0-10, "feedback": "1-2 sentences" },
-  "professionalism": { "score": number 0-10, "feedback": "1-2 sentences" },
-  "overall_impression": { "score": number 0-10, "feedback": "1-2 sentences" },
+  "energy_level": { "score": number 0-10, "feedback": "1-2 sentences with specific observations" },
+  "eye_contact": { "score": number 0-10, "feedback": "1-2 sentences with specific observations" },
+  "english_fluency": { "score": number 0-10, "feedback": "1-2 sentences with specific observations" },
+  "vocabulary": { "score": number 0-10, "feedback": "1-2 sentences with specific observations" },
+  "communication_skills": { "score": number 0-10, "feedback": "1-2 sentences with specific observations" },
+  "confidence": { "score": number 0-10, "feedback": "1-2 sentences with specific observations" },
+  "body_language": { "score": number 0-10, "feedback": "1-2 sentences with specific observations" },
+  "content_quality": { "score": number 0-10, "feedback": "1-2 sentences with specific observations" },
+  "professionalism": { "score": number 0-10, "feedback": "1-2 sentences with specific observations" },
+  "overall_impression": { "score": number 0-10, "feedback": "1-2 sentences with specific observations" },
   "verdict": "strong" or "average" or "weak",
-  "summary": "3-4 sentence summary for hiring manager",
-  "strengths": ["strength1", "strength2"],
-  "improvements": ["area1", "area2"]
+  "summary": "3-4 sentence summary for hiring manager with specific details from the video",
+  "strengths": ["strength1", "strength2", "strength3"],
+  "improvements": ["area1", "area2", "area3"]
 }`;
 
-    // Send as data URL with proper MIME type — required by Gemini for non-image formats
+    // Use the signed URL directly - Gemini can fetch video from URL
     const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -144,14 +143,14 @@ Return ONLY valid JSON with these exact fields:
         messages: [
           {
             role: "system",
-            content: "You are an expert HR video analyst. Analyze candidate videos and return structured JSON scores. Always respond with valid JSON only, no markdown.",
+            content: "You are an expert HR video analyst. You carefully watch candidate videos and provide detailed, honest, and strict scoring. Always respond with valid JSON only, no markdown. Be specific in your feedback - mention what you actually observed.",
           },
           {
             role: "user",
             content: [
               {
                 type: "image_url",
-                image_url: { url: `data:video/webm;base64,${videoBase64}` },
+                image_url: { url: videoUrl },
               },
               {
                 type: "text",
@@ -160,7 +159,7 @@ Return ONLY valid JSON with these exact fields:
             ],
           },
         ],
-        max_tokens: 2000,
+        max_tokens: 3000,
       }),
     });
 
@@ -202,8 +201,6 @@ Return ONLY valid JSON with these exact fields:
       .from("applications")
       .update({ video_score: analysis.overall_score, video_analysis: analysis })
       .eq("id", application.id);
-
-
 
     console.log("Video analysis complete for application:", application.id);
   } catch (err) {
