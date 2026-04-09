@@ -57,40 +57,46 @@ Deno.serve(async (req) => {
       throw new Error("Job not found: " + (jobErr?.message || ""));
     }
 
-    // Extract resume text (supports private bucket object paths and legacy public URLs)
+    // Get resume content - use signed URL for AI to read directly
+    let resumeSignedUrl: string | null = null;
     let resumeText = "No resume provided";
+
     if (application.resume_url) {
       try {
-        let bytes: Uint8Array | null = null;
         const resumeRef = String(application.resume_url);
 
-        // New format: stored object path in private resumes bucket
         if (!resumeRef.startsWith("http")) {
-          const { data: fileData, error: fileErr } = await supabase.storage.from("resumes").download(resumeRef);
-          if (fileErr) throw new Error(`Resume download failed: ${fileErr.message}`);
-          bytes = new Uint8Array(await fileData.arrayBuffer());
+          // Private bucket - create signed URL
+          const { data: signedData, error: signedErr } = await supabase.storage
+            .from("resumes")
+            .createSignedUrl(resumeRef, 3600);
+          if (!signedErr && signedData?.signedUrl) {
+            resumeSignedUrl = signedData.signedUrl;
+          }
         } else {
-          // Legacy format: public URL already stored in DB
-          const pdfResponse = await fetch(resumeRef);
-          if (!pdfResponse.ok) throw new Error(`Resume fetch failed: ${pdfResponse.status}`);
-          bytes = new Uint8Array(await pdfResponse.arrayBuffer());
+          resumeSignedUrl = resumeRef;
         }
 
-        if (bytes && bytes.length > 0) {
-          const textDecoder = new TextDecoder("utf-8", { fatal: false });
-          const rawText = textDecoder.decode(bytes);
-          const textParts: string[] = [];
-          const lines = rawText.split(/\r?\n/);
-          for (const line of lines) {
-            const printable = line.replace(/[^\x20-\x7E]/g, "");
-            if (printable.length > 10 && printable.length / Math.max(line.length, 1) > 0.5) {
-              textParts.push(printable);
+        // Also try text extraction as fallback
+        if (!resumeRef.startsWith("http")) {
+          const { data: fileData, error: fileErr } = await supabase.storage.from("resumes").download(resumeRef);
+          if (!fileErr && fileData) {
+            const bytes = new Uint8Array(await fileData.arrayBuffer());
+            if (bytes.length > 0) {
+              const textDecoder = new TextDecoder("utf-8", { fatal: false });
+              const rawText = textDecoder.decode(bytes);
+              const textParts: string[] = [];
+              const lines = rawText.split(/\r?\n/);
+              for (const line of lines) {
+                const printable = line.replace(/[^\x20-\x7E]/g, "");
+                if (printable.length > 10 && printable.length / Math.max(line.length, 1) > 0.5) {
+                  textParts.push(printable);
+                }
+              }
+              if (textParts.length > 0) {
+                resumeText = textParts.join("\n").substring(0, 8000);
+              }
             }
-          }
-          if (textParts.length > 0) {
-            resumeText = textParts.join("\n").substring(0, 5000);
-          } else {
-            resumeText = "Resume uploaded but text extraction produced limited output.";
           }
         }
       } catch (e) {
@@ -105,9 +111,11 @@ Deno.serve(async (req) => {
 IMPORTANT SCORING RULES:
 - Score MUST be based on actual skill match, experience fit, and job relevance
 - Experience match is critical: if candidate has ${application.experience_years} years and job needs ${job.experience_min ?? "N/A"}-${job.experience_max ?? "N/A"} years, factor this heavily
-- CTC expectations: Current ${application.current_ctc} LPA, Expected ${application.expected_ctc} LPA - flag if unreasonable
-- Score range: 0-30 = weak (major skill gaps), 31-60 = average (some match), 61-80 = good (strong match), 81-100 = excellent (perfect fit)
+- CTC expectations: Current ${application.current_ctc} LPA, Expected ${application.expected_ctc} LPA - flag if unreasonable gap
 - Be STRICT and ACCURATE. Do not inflate scores.
+- Score range: 0-30 = weak (major skill gaps, wrong domain), 31-50 = below average (some gaps), 51-70 = average (decent match), 71-85 = good (strong match), 86-100 = excellent (perfect fit, rare)
+- Most candidates should score between 40-70. Only truly exceptional matches get 80+.
+- If resume text is limited, heavily penalize the score and note it.
 
 Job Title: ${job.title}
 Department: ${job.department}
@@ -118,28 +126,42 @@ Location: ${job.location}
 Work Type: ${job.work_type}
 
 Candidate Information:
+Name: ${candidate?.full_name || "Unknown"}
 Current Company: ${application.current_company}
 Current CTC: ${application.current_ctc} LPA
 Expected CTC: ${application.expected_ctc} LPA
 Notice Period: ${application.notice_period} days
 Experience: ${application.experience_years} years
 
-Candidate Resume (may be partially extracted from PDF):
+Candidate Resume Text (extracted from PDF):
 ${resumeText}
-
-NOTE: If resume text is limited or unreadable, base your scoring primarily on the candidate information fields above and the job requirements. Do NOT give a high score just because resume text is unavailable.
 
 Return ONLY a valid JSON response with these exact fields:
 {
   "score": number between 0 and 100,
-  "matched_skills": array of strings,
-  "missing_skills": array of strings,
+  "matched_skills": ["skill1", "skill2"],
+  "missing_skills": ["skill1", "skill2"],
   "experience_match": true or false,
-  "education": string,
+  "education": "degree details if found",
   "verdict": "strong" or "average" or "weak",
-  "recommendation": string of max 2 sentences,
-  "ai_message_to_hr": string of max 3 sentences explaining if this profile is good or not
+  "recommendation": "2-3 sentences explaining the score with specific reasons",
+  "ai_message_to_hr": "3-4 sentences for HR explaining why this candidate is good/bad fit with specific details from resume"
 }`;
+
+    // Build messages - if we have a signed URL for the resume, send it as an image for Gemini to read
+    const userContent: any[] = [];
+
+    if (resumeSignedUrl) {
+      userContent.push({
+        type: "image_url",
+        image_url: { url: resumeSignedUrl },
+      });
+    }
+
+    userContent.push({
+      type: "text",
+      text: prompt,
+    });
 
     // Call Lovable AI
     const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -149,12 +171,12 @@ Return ONLY a valid JSON response with these exact fields:
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model: "google/gemini-2.5-flash",
         messages: [
-          { role: "system", content: "You are an expert HR recruiter AI. Always respond with valid JSON only, no markdown." },
-          { role: "user", content: prompt },
+          { role: "system", content: "You are an expert HR recruiter AI. You carefully analyze resumes and job descriptions. Always respond with valid JSON only, no markdown. Be strict and specific in your scoring." },
+          { role: "user", content: userContent },
         ],
-        max_tokens: 1000,
+        max_tokens: 1500,
       }),
     });
 
@@ -182,7 +204,6 @@ Return ONLY a valid JSON response with these exact fields:
     // Parse AI response
     let analysis;
     try {
-      // Remove any markdown code fences
       const cleaned = aiContent.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
       analysis = JSON.parse(cleaned);
     } catch {
@@ -213,8 +234,6 @@ Return ONLY a valid JSON response with these exact fields:
       console.error("Update error:", updateErr);
       throw new Error("Failed to save score: " + updateErr.message);
     }
-
-
 
     // Find HR who posted the job to notify them
     const { data: hrUser } = await supabase
