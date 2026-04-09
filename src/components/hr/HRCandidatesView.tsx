@@ -210,6 +210,29 @@ const HRCandidatesView = ({ companyId }: Props) => {
     if (companyId) fetchApplications();
   }, [companyId]);
 
+  // Real-time subscription for application updates
+  useEffect(() => {
+    if (!companyId) return;
+
+    const channel = supabase
+      .channel("hr-app-updates")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "applications",
+        },
+        () => {
+          // Refetch when any application changes
+          fetchApplications();
+        }
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [companyId]);
+
   const handleViewResume = async (url: string | null) => {
     if (!url) {
       toast({ title: "No Resume", description: "This candidate did not upload a resume." });
