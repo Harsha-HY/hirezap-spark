@@ -3,11 +3,11 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Zap, BarChart3, Settings, Bell, LogOut, Plus, Users, Briefcase,
-  MessageSquare, UserCheck, UserCog, LayoutDashboard,
+  MessageSquare, UserCheck, UserCog, LayoutDashboard, Menu, X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import AddUserPanel from "@/components/AddUserPanel";
 import { useToast } from "@/hooks/use-toast";
 
@@ -42,7 +42,21 @@ const AdminDashboard = () => {
   const [hiringManagers, setHiringManagers] = useState<UserRow[]>([]);
   const [panelOpen, setPanelOpen] = useState(false);
   const [panelType, setPanelType] = useState<"hr" | "manager">("hr");
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const { toast } = useToast();
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+      if (window.innerWidth < 768) {
+        setSidebarOpen(false);
+      }
+    };
+
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   const fetchData = async () => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -108,6 +122,7 @@ const AdminDashboard = () => {
     const sectionId = sectionMap[label];
     if (sectionId) {
       document.getElementById(sectionId)?.scrollIntoView({ behavior: "smooth", block: "start" });
+      if (isMobile) setSidebarOpen(false);
       return;
     }
 
@@ -123,59 +138,99 @@ const AdminDashboard = () => {
 
   return (
     <div className="flex min-h-screen bg-background">
+      {/* Mobile Overlay */}
+      <AnimatePresence>
+        {sidebarOpen && isMobile && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setSidebarOpen(false)}
+            className="fixed inset-0 z-20 bg-black/50"
+          />
+        )}
+      </AnimatePresence>
+
       {/* Sidebar */}
-      <motion.aside
-        initial={{ x: -260 }}
-        animate={{ x: 0 }}
-        transition={{ duration: 0.4, ease: "easeOut" }}
-        className="fixed left-0 top-0 z-30 flex h-screen w-60 flex-col border-r border-border bg-card"
-      >
-        <div className="px-5 py-6 border-b border-border">
-          <div className="flex items-center gap-2.5">
-            <Zap className="h-7 w-7 text-primary fill-primary" />
-            <span className="text-xl font-extrabold tracking-tight text-foreground">
-              Hire<span className="text-primary">Zap</span>
-            </span>
+      <AnimatePresence>
+        <motion.aside
+          initial={{ x: -260 }}
+          animate={{ x: sidebarOpen ? 0 : -260 }}
+          exit={{ x: -260 }}
+          transition={{ duration: 0.3, ease: "easeOut" }}
+          className={`fixed left-0 top-0 z-30 flex h-screen w-60 flex-col border-r border-border bg-card ${
+            sidebarOpen ? "visible" : "invisible"
+          }`}
+        >
+          <div className="px-5 py-6 border-b border-border">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <Zap className="h-7 w-7 text-primary fill-primary" />
+                <span className="text-xl font-extrabold tracking-tight text-foreground">
+                  Hire<span className="text-primary">Zap</span>
+                </span>
+              </div>
+              {isMobile && (
+                <button
+                  onClick={() => setSidebarOpen(false)}
+                  className="rounded-lg hover:bg-secondary p-2 transition-colors"
+                >
+                  <X className="h-5 w-5 text-foreground" />
+                </button>
+              )}
+            </div>
+            {companyName && (
+              <p className="text-xs text-primary mt-2 truncate">{companyName}</p>
+            )}
           </div>
-          {companyName && (
-            <p className="text-xs text-primary mt-2 truncate">{companyName}</p>
-          )}
-        </div>
 
-        <nav className="flex-1 px-3 py-4 space-y-1">
-          {navItems.map(({ icon: Icon, label }) => (
+          <nav className="flex-1 px-3 py-4 space-y-1">
+            {navItems.map(({ icon: Icon, label }) => (
+              <button
+                key={label}
+                onClick={() => handleNavClick(label)}
+                className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
+                  activeNav === label
+                    ? "bg-primary/10 text-primary"
+                    : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+                }`}
+              >
+                <Icon className="h-4 w-4" />
+                {label}
+              </button>
+            ))}
+          </nav>
+
+          <div className="border-t border-border px-4 py-4">
+            <p className="text-sm font-medium text-foreground truncate">{adminName || "Admin"}</p>
+            <p className="text-xs text-muted-foreground mb-3">Super Admin</p>
             <button
-              key={label}
-              onClick={() => handleNavClick(label)}
-              className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
-                activeNav === label
-                  ? "bg-primary/10 text-primary"
-                  : "text-muted-foreground hover:bg-secondary hover:text-foreground"
-              }`}
+              onClick={handleLogout}
+              className="flex items-center gap-2 text-sm text-muted-foreground hover:text-destructive transition-colors"
             >
-              <Icon className="h-4 w-4" />
-              {label}
+              <LogOut className="h-4 w-4" />
+              Logout
             </button>
-          ))}
-        </nav>
-
-        <div className="border-t border-border px-4 py-4">
-          <p className="text-sm font-medium text-foreground truncate">{adminName || "Admin"}</p>
-          <p className="text-xs text-muted-foreground mb-3">Super Admin</p>
-          <button
-            onClick={handleLogout}
-            className="flex items-center gap-2 text-sm text-muted-foreground hover:text-destructive transition-colors"
-          >
-            <LogOut className="h-4 w-4" />
-            Logout
-          </button>
-        </div>
-      </motion.aside>
+          </div>
+        </motion.aside>
+      </AnimatePresence>
 
       {/* Main */}
-      <div className="ml-60 flex-1 flex flex-col">
-        <header className="sticky top-0 z-20 flex items-center justify-between border-b border-border bg-background/80 backdrop-blur-md px-8 py-4">
-          <h1 className="text-xl font-bold text-foreground">Super Admin Dashboard</h1>
+      <div className={`flex-1 flex flex-col transition-all duration-300 ${
+        sidebarOpen && !isMobile ? "md:ml-60" : ""
+      }`}>
+        <header className="sticky top-0 z-20 flex items-center justify-between border-b border-border bg-background/80 backdrop-blur-md px-4 md:px-8 py-4">
+          <div className="flex items-center gap-4">
+            {(!sidebarOpen || isMobile) && (
+              <button
+                onClick={() => setSidebarOpen(!sidebarOpen)}
+                className="rounded-lg hover:bg-secondary p-2 transition-colors md:hidden"
+              >
+                <Menu className="h-5 w-5 text-foreground" />
+              </button>
+            )}
+            <h1 className="text-xl font-bold text-foreground">Super Admin Dashboard</h1>
+          </div>
           <div className="flex items-center gap-4">
             <button className="relative p-2 rounded-lg hover:bg-secondary transition-colors">
               <Bell className="h-5 w-5 text-muted-foreground" />
@@ -187,7 +242,7 @@ const AdminDashboard = () => {
           </div>
         </header>
 
-        <main id="admin-dashboard-top" className="flex-1 p-8">
+        <main id="admin-dashboard-top" className="flex-1 p-4 md:p-8 overflow-y-auto">
           {/* Stat Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
             {stats.map(({ icon: Icon, label, value, color }, i) => (
@@ -209,110 +264,114 @@ const AdminDashboard = () => {
 
           {/* HR Managers Section */}
           <div id="hr-managers-section" className="rounded-xl border border-border bg-card mb-6">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between px-4 md:px-6 py-4 border-b border-border gap-4">
               <h2 className="text-lg font-semibold text-foreground">HR Managers</h2>
               <Button
                 onClick={() => openPanel("hr")}
-                className="bg-primary text-primary-foreground hover:bg-primary/90 gap-2"
+                className="bg-primary text-primary-foreground hover:bg-primary/90 gap-2 w-full md:w-auto"
                 size="sm"
               >
                 <Plus className="h-4 w-4" />
                 Add HR Manager
               </Button>
             </div>
-            <Table>
-              <TableHeader>
-                <TableRow className="hover:bg-transparent">
-                  <TableHead>Name</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Phone</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Created</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {hrManagers.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={6} className="text-center py-12 text-muted-foreground">
-                      No HR managers yet. Click "+ Add HR Manager" to get started.
-                    </TableCell>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="hover:bg-transparent">
+                    <TableHead>Name</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead className="hidden sm:table-cell">Phone</TableHead>
+                    <TableHead className="hidden md:table-cell">Status</TableHead>
+                    <TableHead className="hidden lg:table-cell">Created</TableHead>
+                    <TableHead>Actions</TableHead>
                   </TableRow>
-                ) : (
-                  hrManagers.map((u) => (
-                    <TableRow key={u.id}>
-                      <TableCell className="font-medium">{u.full_name}</TableCell>
-                      <TableCell>{u.email}</TableCell>
-                      <TableCell>{u.phone || "—"}</TableCell>
-                      <TableCell>
-                        <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">Active</span>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground text-sm">
-                        {new Date(u.created_at).toLocaleDateString()}
-                      </TableCell>
-                      <TableCell>
-                        <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">•••</Button>
+                </TableHeader>
+                <TableBody>
+                  {hrManagers.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center py-12 text-muted-foreground">
+                        No HR managers yet. Click "+ Add HR Manager" to get started.
                       </TableCell>
                     </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
+                  ) : (
+                    hrManagers.map((u) => (
+                      <TableRow key={u.id}>
+                        <TableCell className="font-medium">{u.full_name}</TableCell>
+                        <TableCell>{u.email}</TableCell>
+                        <TableCell className="hidden sm:table-cell">{u.phone || "—"}</TableCell>
+                        <TableCell className="hidden md:table-cell">
+                          <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">Active</span>
+                        </TableCell>
+                        <TableCell className="hidden lg:table-cell text-muted-foreground text-sm">
+                          {new Date(u.created_at).toLocaleDateString()}
+                        </TableCell>
+                        <TableCell>
+                          <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">•••</Button>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
           </div>
 
           {/* Hiring Managers Section */}
           <div id="hiring-managers-section" className="rounded-xl border border-border bg-card">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between px-4 md:px-6 py-4 border-b border-border gap-4">
               <h2 className="text-lg font-semibold text-foreground">Hiring Managers</h2>
               <Button
                 onClick={() => openPanel("manager")}
-                className="bg-primary text-primary-foreground hover:bg-primary/90 gap-2"
+                className="bg-primary text-primary-foreground hover:bg-primary/90 gap-2 w-full md:w-auto"
                 size="sm"
               >
                 <Plus className="h-4 w-4" />
                 Add Hiring Manager
               </Button>
             </div>
-            <Table>
-              <TableHeader>
-                <TableRow className="hover:bg-transparent">
-                  <TableHead>Name</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Phone</TableHead>
-                  <TableHead>Department</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Created</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {hiringManagers.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
-                      No hiring managers yet. Click "+ Add Hiring Manager" to get started.
-                    </TableCell>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="hover:bg-transparent">
+                    <TableHead>Name</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead className="hidden sm:table-cell">Phone</TableHead>
+                    <TableHead className="hidden md:table-cell">Department</TableHead>
+                    <TableHead className="hidden lg:table-cell">Status</TableHead>
+                    <TableHead className="hidden xl:table-cell">Created</TableHead>
+                    <TableHead>Actions</TableHead>
                   </TableRow>
-                ) : (
-                  hiringManagers.map((u) => (
-                    <TableRow key={u.id}>
-                      <TableCell className="font-medium">{u.full_name}</TableCell>
-                      <TableCell>{u.email}</TableCell>
-                      <TableCell>{u.phone || "—"}</TableCell>
-                      <TableCell>{(u as any).department || "—"}</TableCell>
-                      <TableCell>
-                        <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">Active</span>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground text-sm">
-                        {new Date(u.created_at).toLocaleDateString()}
-                      </TableCell>
-                      <TableCell>
-                        <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">•••</Button>
+                </TableHeader>
+                <TableBody>
+                  {hiringManagers.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
+                        No hiring managers yet. Click "+ Add Hiring Manager" to get started.
                       </TableCell>
                     </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
+                  ) : (
+                    hiringManagers.map((u) => (
+                      <TableRow key={u.id}>
+                        <TableCell className="font-medium">{u.full_name}</TableCell>
+                        <TableCell>{u.email}</TableCell>
+                        <TableCell className="hidden sm:table-cell">{u.phone || "—"}</TableCell>
+                        <TableCell className="hidden md:table-cell">{(u as any).department || "—"}</TableCell>
+                        <TableCell className="hidden lg:table-cell">
+                          <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">Active</span>
+                        </TableCell>
+                        <TableCell className="hidden xl:table-cell text-muted-foreground text-sm">
+                          {new Date(u.created_at).toLocaleDateString()}
+                        </TableCell>
+                        <TableCell>
+                          <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">•••</Button>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
           </div>
         </main>
       </div>
