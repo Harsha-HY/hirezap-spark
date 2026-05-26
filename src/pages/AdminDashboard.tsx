@@ -113,20 +113,30 @@ const AdminDashboard = () => {
   const handleNavClick = (label: string) => {
     setActiveNav(label);
 
+    // Map of navigation items to scroll section IDs
     const sectionMap: Record<string, string> = {
       Dashboard: "admin-dashboard-top",
       "HR Managers": "hr-managers-section",
       "Hiring Managers": "hiring-managers-section",
+      Candidates: "candidates-section",
+      Jobs: "jobs-section",
+      Messages: "messages-section",
+      Analytics: "analytics-section",
+      Settings: "settings-section",
     };
 
     const sectionId = sectionMap[label];
     if (sectionId) {
-      document.getElementById(sectionId)?.scrollIntoView({ behavior: "smooth", block: "start" });
+      // Scroll to the section smoothly
+      setTimeout(() => {
+        const element = document.getElementById(sectionId);
+        if (element) {
+          element.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+      }, 100);
+      
       if (isMobile) setSidebarOpen(false);
-      return;
     }
-
-    toast({ title: "Section unavailable", description: `${label} module is coming soon.` });
   };
 
   const stats = [
@@ -135,6 +145,16 @@ const AdminDashboard = () => {
     { icon: Users, label: "Total Candidates", value: 0, color: "text-amber-400" },
     { icon: Briefcase, label: "Total Jobs Open", value: 0, color: "text-purple-400" },
   ];
+
+  const ComingSoonSection = ({ id, title, icon: Icon }: { id: string; title: string; icon: React.FC<any> }) => (
+    <div id={id} className="rounded-xl border border-border bg-card p-12 mb-6">
+      <div className="flex flex-col items-center justify-center text-center">
+        <Icon className="h-12 w-12 text-muted-foreground mb-4" />
+        <h3 className="text-lg font-semibold text-foreground mb-2">{title}</h3>
+        <p className="text-muted-foreground text-sm">This section is coming soon. Stay tuned for updates!</p>
+      </div>
+    </div>
+  );
 
   return (
     <div className="flex min-h-screen bg-background">
@@ -318,7 +338,7 @@ const AdminDashboard = () => {
           </div>
 
           {/* Hiring Managers Section */}
-          <div id="hiring-managers-section" className="rounded-xl border border-border bg-card">
+          <div id="hiring-managers-section" className="rounded-xl border border-border bg-card mb-6">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between px-4 md:px-6 py-4 border-b border-border gap-4">
               <h2 className="text-lg font-semibold text-foreground">Hiring Managers</h2>
               <Button
@@ -373,6 +393,13 @@ const AdminDashboard = () => {
               </Table>
             </div>
           </div>
+
+          {/* Coming Soon Sections */}
+          <ComingSoonSection id="candidates-section" title="Candidates Management" icon={Users} />
+          <ComingSoonSection id="jobs-section" title="Jobs Management" icon={Briefcase} />
+          <ComingSoonSection id="messages-section" title="Messages" icon={MessageSquare} />
+          <ComingSoonSection id="analytics-section" title="Analytics Dashboard" icon={BarChart3} />
+          <ComingSoonSection id="settings-section" title="Settings" icon={Settings} />
         </main>
       </div>
 
