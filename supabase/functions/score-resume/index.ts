@@ -21,10 +21,10 @@ Deno.serve(async (req) => {
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const lovableApiKey = Deno.env.get("LOVABLE_API_KEY");
+    const aiGatewayApiKey = Deno.env.get("AI_GATEWAY_API_KEY");
 
-    if (!lovableApiKey) {
-      throw new Error("LOVABLE_API_KEY is not configured");
+    if (!aiGatewayApiKey) {
+      throw new Error("AI_GATEWAY_API_KEY is not configured");
     }
 
     const supabase = createClient(supabaseUrl, serviceRoleKey);
@@ -163,11 +163,11 @@ Return ONLY a valid JSON response with these exact fields:
       text: prompt,
     });
 
-    // Call Lovable AI
-    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    // Call AI gateway
+    const aiResponse = await fetch(Deno.env.get("AI_GATEWAY_URL")!, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${lovableApiKey}`,
+        Authorization: `Bearer ${aiGatewayApiKey}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({

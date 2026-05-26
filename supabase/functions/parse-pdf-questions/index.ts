@@ -22,9 +22,9 @@ Deno.serve(async (req) => {
       });
     }
 
-    const lovableApiKey = Deno.env.get("LOVABLE_API_KEY");
-    if (!lovableApiKey) {
-      throw new Error("LOVABLE_API_KEY is not configured");
+    const aiGatewayApiKey = Deno.env.get("AI_GATEWAY_API_KEY");
+    if (!aiGatewayApiKey) {
+      throw new Error("AI_GATEWAY_API_KEY is not configured");
     }
 
     // Extract text from the PDF
@@ -110,10 +110,10 @@ Return ONLY valid JSON (no markdown code fences):
 IMPORTANT: correct_answer must be exactly one of: "A", "B", "C", or "D".
 Generate at least 10 questions. If PDF has more, extract all of them.`;
 
-    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const aiResponse = await fetch(Deno.env.get("AI_GATEWAY_URL")!, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${lovableApiKey}`,
+        Authorization: `Bearer ${aiGatewayApiKey}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({

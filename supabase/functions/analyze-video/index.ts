@@ -21,8 +21,8 @@ Deno.serve(async (req) => {
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const lovableApiKey = Deno.env.get("LOVABLE_API_KEY");
-    if (!lovableApiKey) throw new Error("LOVABLE_API_KEY is not configured");
+    const aiGatewayApiKey = Deno.env.get("AI_GATEWAY_API_KEY");
+    if (!aiGatewayApiKey) throw new Error("AI_GATEWAY_API_KEY is not configured");
 
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
@@ -42,7 +42,7 @@ Deno.serve(async (req) => {
       .eq("id", applicationId);
 
     // Start background processing
-    EdgeRuntime.waitUntil(processVideoAnalysis(supabase, application, lovableApiKey));
+    EdgeRuntime.waitUntil(processVideoAnalysis(supabase, application, aiGatewayApiKey));
 
     return new Response(JSON.stringify({ success: true, status: "processing" }), {
       status: 200,
@@ -57,7 +57,7 @@ Deno.serve(async (req) => {
   }
 });
 
-async function processVideoAnalysis(supabase: any, application: any, lovableApiKey: string) {
+async function processVideoAnalysis(supabase: any, application: any, aiGatewayApiKey: string) {
   try {
     const { data: job } = await supabase
       .from("jobs")
@@ -132,10 +132,10 @@ Return ONLY valid JSON with these exact fields:
 }`;
 
     // Use the signed URL directly - Gemini can fetch video from URL
-    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const aiResponse = await fetch(Deno.env.get("AI_GATEWAY_URL")!, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${lovableApiKey}`,
+        Authorization: `Bearer ${aiGatewayApiKey}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({

@@ -22,10 +22,10 @@ Deno.serve(async (req) => {
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const lovableApiKey = Deno.env.get("LOVABLE_API_KEY");
+    const aiGatewayApiKey = Deno.env.get("AI_GATEWAY_API_KEY");
 
-    if (!lovableApiKey) {
-      throw new Error("LOVABLE_API_KEY is not configured");
+    if (!aiGatewayApiKey) {
+      throw new Error("AI_GATEWAY_API_KEY is not configured");
     }
 
     const supabase = createClient(supabaseUrl, serviceRoleKey);
@@ -131,10 +131,10 @@ Mix difficulties: 30% easy, 50% medium, 20% hard.
 Make questions highly relevant to the candidate's skills and experience level.`;
     }
 
-    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const aiResponse = await fetch(Deno.env.get("AI_GATEWAY_URL")!, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${lovableApiKey}`,
+        Authorization: `Bearer ${aiGatewayApiKey}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
