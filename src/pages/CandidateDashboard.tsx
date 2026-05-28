@@ -33,6 +33,7 @@ interface Application {
   applied_at: string;
   job_id: string;
   resume_url?: string | null;
+  test_score?: number | null;
   jobs?: { title: string; company_id: string; companies?: { company_name: string } | null } | null;
 }
 
@@ -59,6 +60,15 @@ const CandidateDashboard = () => {
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [changingPassword, setChangingPassword] = useState(false);
+
+  // Onboarding & Experience states
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [onboardingType, setOnboardingType] = useState<"student" | "fresher" | "experience">("fresher");
+  const [onboardingYears, setOnboardingYears] = useState(0);
+  const [onboardingSubmitting, setOnboardingSubmitting] = useState(false);
+  const [experienceType, setExperienceType] = useState<string>("fresher");
+  const [experienceYears, setExperienceYears] = useState<number>(0);
+
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -76,6 +86,22 @@ const CandidateDashboard = () => {
     setUser(userData);
     setProfileName(userData.full_name);
     setProfilePhone(userData.phone || "");
+
+    let parsedExp = { type: "", years: 0 };
+    try {
+      if (userData.department && userData.department.trim().startsWith("{")) {
+        parsedExp = JSON.parse(userData.department);
+      }
+    } catch (e) {
+      console.error("Error parsing experience JSON:", e);
+    }
+
+    if (userData.role === "candidate" && (!parsedExp.type || !["student", "fresher", "experience"].includes(parsedExp.type))) {
+      setShowOnboarding(true);
+    } else {
+      setExperienceType(parsedExp.type || "fresher");
+      setExperienceYears(parsedExp.years || 0);
+    }
 
     const { data: apps } = await supabase
       .from("applications")
@@ -145,13 +171,57 @@ const CandidateDashboard = () => {
 
     const { data: openJobs } = await supabase
       .from("jobs")
-      .select("id, title, department, location, work_type, salary_min, salary_max, skills_required, company_id, companies(company_name)")
+      .select("id, title, department, location, work_type, salary_min, salary_max, skills_required, company_id, companies(company_name), experience_min, experience_max")
       .eq("status", "open")
       .order("created_at", { ascending: false });
-    if (openJobs) setBrowseJobs(openJobs as any);
+    if (openJobs) {
+      const candidateYears = parsedExp.years || 0;
+      const outskillJobs = (openJobs as any[]).filter(job => {
+        const isOutskill = (job.companies?.company_name || "").toLowerCase().includes("outskill");
+        if (!isOutskill) return false;
+
+        const minExp = job.experience_min ?? 0;
+        const maxExp = job.experience_max ?? 99;
+        return candidateYears >= minExp && candidateYears <= maxExp;
+      });
+      setBrowseJobs(outskillJobs);
+    }
 
     setLoading(false);
   }, []);
+
+  const handleOnboardingSubmit = async () => {
+    if (!user) return;
+    setOnboardingSubmitting(true);
+    const expJson = JSON.stringify({
+      type: onboardingType,
+      years: onboardingType === "experience" ? onboardingYears : 0,
+    });
+
+    const { error } = await supabase
+      .from("users")
+      .update({ department: expJson })
+      .eq("id", user.id);
+
+    if (error) {
+      toast({
+        title: "Error saving profile",
+        description: error.message,
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "🎉 Profile Completed!",
+        description: "Your experience preferences have been saved.",
+      });
+      setUser({ ...user, department: expJson });
+      setExperienceType(onboardingType);
+      setExperienceYears(onboardingType === "experience" ? onboardingYears : 0);
+      setShowOnboarding(false);
+      fetchData();
+    }
+    setOnboardingSubmitting(false);
+  };
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -261,8 +331,8 @@ const CandidateDashboard = () => {
     const hasSubmittedCurrentTest = submittedTestAppIds.has(latestApp.id);
     const normalizedStage =
       rawStage === "applied" || rawStage === "ai_scored" ? "resume_review"
-      : rawStage === "test_completed" ? "video_intro"
-      : rawStage === "aptitude_test" && hasSubmittedCurrentTest ? "video_intro"
+      : rawStage === "test_completed" ? "aptitude_test"
+      : rawStage === "aptitude_test" && hasSubmittedCurrentTest ? "aptitude_test"
       : rawStage === "shortlisted" ? "aptitude_test"
       : rawStage === "video_submitted" ? "technical_round"
       : rawStage === "technical_round" || rawStage === "technical_test" ? "technical_round"
@@ -318,6 +388,11 @@ const CandidateDashboard = () => {
                         <Button size="sm" onClick={() => navigate("/aptitude-test")} className="bg-primary text-primary-foreground h-7 px-3 text-xs">
                           🎯 Take Test
                         </Button>
+                      )}
+                      {stage.key === "aptitude_test" && latestApp.test_score !== null && latestApp.test_score !== undefined && (
+                        <span className="text-xs font-semibold text-muted-foreground ml-2">
+                          Score: <span className="text-primary">{latestApp.test_score}%</span>
+                        </span>
                       )}
                       {isCurrent && stage.key === "video_intro" && (
                         <Button size="sm" onClick={() => navigate("/video-intro")} className="bg-primary text-primary-foreground h-7 px-3 text-xs">
@@ -550,15 +625,46 @@ const CandidateDashboard = () => {
             <label className="text-sm font-medium text-foreground">Phone</label>
             <Input value={profilePhone} onChange={(e) => setProfilePhone(e.target.value)} placeholder="Enter phone number" className="mt-1" />
           </div>
+          <div>
+            <label className="text-sm font-medium text-foreground">Professional Status</label>
+            <Select value={experienceType} onValueChange={(v) => {
+              setExperienceType(v);
+              if (v !== "experience") setExperienceYears(0);
+            }}>
+              <SelectTrigger className="mt-1 bg-secondary/50 border-border">
+                <SelectValue placeholder="Select professional status..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="student">🎓 Student (No experience)</SelectItem>
+                <SelectItem value="fresher">🚀 Fresher (0 years experience)</SelectItem>
+                <SelectItem value="experience">💼 Experienced (1+ years experience)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          {experienceType === "experience" && (
+            <div>
+              <label className="text-sm font-medium text-foreground">Years of Experience</label>
+              <Input type="number" min={1} max={50} value={experienceYears || ""} onChange={(e) => setExperienceYears(Number(e.target.value))} className="mt-1 bg-secondary/50 border-border" />
+            </div>
+          )}
           <Button size="sm" disabled={profileUpdating} onClick={async () => {
             if (!user) return;
             setProfileUpdating(true);
-            const { error } = await supabase.from("users").update({ full_name: profileName, phone: profilePhone }).eq("id", user.id);
+            const expJson = JSON.stringify({ type: experienceType, years: experienceYears });
+            const { error } = await supabase
+              .from("users")
+              .update({ 
+                full_name: profileName, 
+                phone: profilePhone,
+                department: expJson
+              })
+              .eq("id", user.id);
             if (error) {
               toast({ title: "Error", description: error.message, variant: "destructive" });
             } else {
               toast({ title: "✅ Profile Updated" });
-              setUser({ ...user, full_name: profileName, phone: profilePhone });
+              setUser({ ...user, full_name: profileName, phone: profilePhone, department: expJson });
+              fetchData();
             }
             setProfileUpdating(false);
           }} className="bg-primary text-primary-foreground">
@@ -845,6 +951,80 @@ const CandidateDashboard = () => {
           open={negotiationOpen}
           onOpenChange={setNegotiationOpen}
         />
+      )}
+
+      {/* Onboarding Modal Overlay */}
+      {showOnboarding && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-md p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            className="w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-2xl space-y-6"
+          >
+            <div className="text-center">
+              <div className="mx-auto h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center mb-3">
+                <Zap className="h-6 w-6 text-primary fill-primary" />
+              </div>
+              <h3 className="text-xl font-bold text-foreground">Welcome to HireZap!</h3>
+              <p className="text-sm text-muted-foreground mt-1">
+                Tell us a bit about your experience to customize your job search.
+              </p>
+            </div>
+
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                  Current Status
+                </label>
+                <Select
+                  value={onboardingType}
+                  onValueChange={(v: any) => {
+                    setOnboardingType(v);
+                    if (v !== "experience") setOnboardingYears(0);
+                  }}
+                >
+                  <SelectTrigger className="h-12 bg-secondary/50 border-border">
+                    <SelectValue placeholder="Select your experience level..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="student">🎓 Student (No experience)</SelectItem>
+                    <SelectItem value="fresher">🚀 Fresher (0 years experience)</SelectItem>
+                    <SelectItem value="experience">💼 Experienced (1+ years experience)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {onboardingType === "experience" && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  className="space-y-2"
+                >
+                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                    Years of Experience
+                  </label>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={50}
+                    placeholder="Enter years (e.g. 2)"
+                    value={onboardingYears || ""}
+                    onChange={(e) => setOnboardingYears(Number(e.target.value))}
+                    className="h-12 bg-secondary/50 border-border"
+                  />
+                </motion.div>
+              )}
+            </div>
+
+            <Button
+              onClick={handleOnboardingSubmit}
+              disabled={onboardingSubmitting || (onboardingType === "experience" && !onboardingYears)}
+              className="w-full h-12 text-sm font-semibold bg-primary text-primary-foreground hover:bg-primary/90 shadow-[0_0_20px_hsl(160,100%,45%,0.2)] transition-all"
+            >
+              {onboardingSubmitting ? "Saving Profile..." : "Get Started"}
+            </Button>
+          </motion.div>
+        </div>
       )}
     </div>
   );

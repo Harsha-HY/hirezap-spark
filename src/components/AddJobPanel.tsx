@@ -159,6 +159,32 @@ const AddJobPanel = ({ open, onOpenChange, companyId, hrUserId, managers, onJobC
       });
     }
 
+    // Notify Superadmins (owners of the company)
+    const { data: superAdmins } = await supabase
+      .from("users")
+      .select("id")
+      .eq("role", "superadmin")
+      .eq("company_id", companyId);
+
+    if (superAdmins) {
+      // Fetch posting HR user's name
+      const { data: hrUser } = await supabase
+        .from("users")
+        .select("full_name")
+        .eq("id", hrUserId)
+        .maybeSingle();
+
+      const hrName = hrUser?.full_name || "HR Manager";
+
+      for (const admin of superAdmins) {
+        await supabase.from("notifications").insert({
+          user_id: admin.id,
+          title: "🆕 Job Posted",
+          message: `${hrName} posted a new job: "${form.title}" in "${form.department}" department.`,
+        });
+      }
+    }
+
     toast({ title: "✅ Job posted successfully!" });
     setForm({
       title: "", department: "", managerId: "", salaryMin: "", salaryMax: "",

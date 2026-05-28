@@ -54,28 +54,49 @@ const UserDetailsModal = ({ open, onOpenChange, user }: UserDetailsModalProps) =
 
         if (company) setCompanyData(company);
 
-        // Fetch candidates managed by this HR/Manager
-        const { data: candidates } = await supabase
-          .from("candidate_applications")
-          .select("id, status")
-          .eq("created_by", user.id);
+        let jobsData = [];
+        let applicationsCount = 0;
+        let selectedCount = 0;
+        let pendingCount = 0;
 
-        // Fetch jobs created by this manager
-        const { data: jobs } = await supabase
-          .from("jobs")
-          .select("id")
-          .eq("created_by", user.id);
+        if (user.role === "hr") {
+          // Fetch jobs posted by this HR
+          const { data: jobs } = await supabase
+            .from("jobs")
+            .select("id")
+            .eq("posted_by", user.id);
 
-        if (candidates) {
-          const selected = candidates.filter((c) => c.status === "selected").length;
-          const pending = candidates.filter((c) => c.status === "pending").length;
-          setStats({
-            candidatesReviewed: candidates.length,
-            candidatesSelected: selected,
-            candidatesPending: pending,
-            jobsCreated: jobs?.length || 0,
-          });
+          jobsData = jobs || [];
+        } else {
+          // Fetch jobs managed by this Hiring Manager
+          const { data: jobs } = await supabase
+            .from("jobs")
+            .select("id")
+            .eq("manager_id", user.id);
+
+          jobsData = jobs || [];
         }
+
+        if (jobsData.length > 0) {
+          const jobIds = jobsData.map(j => j.id);
+          const { data: apps } = await supabase
+            .from("applications")
+            .select("id, status, current_stage")
+            .in("job_id", jobIds);
+
+          if (apps) {
+            applicationsCount = apps.length;
+            selectedCount = apps.filter(a => a.current_stage === "hired" || a.current_stage === "selected" || a.status === "hired" || a.status === "selected").length;
+            pendingCount = apps.filter(a => a.status === "active" && a.current_stage !== "hired" && a.current_stage !== "selected").length;
+          }
+        }
+
+        setStats({
+          candidatesReviewed: applicationsCount,
+          candidatesSelected: selectedCount,
+          candidatesPending: pendingCount,
+          jobsCreated: jobsData.length,
+        });
       }
     } catch (error) {
       console.error("Error fetching details:", error);

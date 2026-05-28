@@ -33,10 +33,38 @@ const Jobs = () => {
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const [panelOpen, setPanelOpen] = useState(false);
   const [locations, setLocations] = useState<string[]>([]);
+  const [candidateYears, setCandidateYears] = useState<number | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
     fetchJobs();
+  }, []);
+
+  useEffect(() => {
+    const checkCandidateProfile = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      const { data: userData } = await supabase
+        .from("users")
+        .select("*")
+        .eq("user_id", session.user.id)
+        .maybeSingle();
+
+      if (userData && userData.role === "candidate" && userData.department) {
+        try {
+          if (userData.department.trim().startsWith("{")) {
+            const parsed = JSON.parse(userData.department);
+            if (parsed && typeof parsed.years === "number") {
+              setCandidateYears(parsed.years);
+            }
+          }
+        } catch (e) {
+          console.error("Error parsing experience JSON in Jobs board:", e);
+        }
+      }
+    };
+    checkCandidateProfile();
   }, []);
 
   const fetchJobs = async () => {
@@ -47,8 +75,11 @@ const Jobs = () => {
       .order("created_at", { ascending: false });
 
     if (data) {
-      setJobs(data as unknown as Job[]);
-      const locs = [...new Set((data as unknown as Job[]).map((j) => j.location))];
+      const outskillJobs = (data as unknown as Job[]).filter(j => 
+        (j.companies?.company_name || "").toLowerCase().includes("outskill")
+      );
+      setJobs(outskillJobs);
+      const locs = [...new Set(outskillJobs.map((j) => j.location))];
       setLocations(locs);
     }
     setLoading(false);
@@ -96,7 +127,15 @@ const Jobs = () => {
       else if (expFilter === "5+") matchExp = min >= 5;
     }
 
-    return matchSearch && matchLocation && matchWorkType && matchExp;
+    // Filter based on candidate's experience years if logged in
+    let matchesCandidateExperience = true;
+    if (candidateYears !== null) {
+      const min = j.experience_min ?? 0;
+      const max = j.experience_max ?? 99;
+      matchesCandidateExperience = candidateYears >= min && candidateYears <= max;
+    }
+
+    return matchSearch && matchLocation && matchWorkType && matchExp && matchesCandidateExperience;
   });
 
   const selectClass = "rounded-lg border border-border bg-card/80 py-2.5 px-3 text-foreground text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary";

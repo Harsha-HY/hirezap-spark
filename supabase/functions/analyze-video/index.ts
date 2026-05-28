@@ -5,6 +5,15 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+function arrayBufferToBase64(buffer: Uint8Array): string {
+  let binary = "";
+  const len = buffer.byteLength;
+  for (let i = 0; i < len; i++) {
+    binary += String.fromCharCode(buffer[i]);
+  }
+  return btoa(binary);
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -21,8 +30,8 @@ Deno.serve(async (req) => {
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const aiGatewayApiKey = Deno.env.get("AI_GATEWAY_API_KEY");
-    if (!aiGatewayApiKey) throw new Error("AI_GATEWAY_API_KEY is not configured");
+    const geminiApiKey = Deno.env.get("GEMINI_VIDEO_API_KEY") || Deno.env.get("GEMINI_API_KEY") || Deno.env.get("AI_GATEWAY_API_KEY");
+    if (!geminiApiKey) throw new Error("GEMINI_VIDEO_API_KEY, GEMINI_API_KEY or AI_GATEWAY_API_KEY is not configured");
 
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
@@ -42,7 +51,7 @@ Deno.serve(async (req) => {
       .eq("id", applicationId);
 
     // Start background processing
-    EdgeRuntime.waitUntil(processVideoAnalysis(supabase, application, aiGatewayApiKey));
+    EdgeRuntime.waitUntil(processVideoAnalysis(supabase, application, geminiApiKey));
 
     return new Response(JSON.stringify({ success: true, status: "processing" }), {
       status: 200,
@@ -57,7 +66,7 @@ Deno.serve(async (req) => {
   }
 });
 
-async function processVideoAnalysis(supabase: any, application: any, aiGatewayApiKey: string) {
+async function processVideoAnalysis(supabase: any, application: any, geminiApiKey: string) {
   try {
     const { data: job } = await supabase
       .from("jobs")
@@ -71,16 +80,27 @@ async function processVideoAnalysis(supabase: any, application: any, aiGatewayAp
       .eq("id", application.candidate_id)
       .maybeSingle();
 
-    // Create a long-lived signed URL for the video (valid 1 hour)
-    const { data: signedData, error: signedErr } = await supabase.storage
+    // Download video file bytes from Supabase Storage
+    const { data: fileData, error: downloadErr } = await supabase.storage
       .from("videos")
-      .createSignedUrl(application.video_url, 3600);
+      .download(application.video_url);
 
-    if (signedErr || !signedData?.signedUrl) {
-      throw new Error("Could not create signed URL for video: " + (signedErr?.message || ""));
+    if (downloadErr || !fileData) {
+      throw new Error("Could not download video file: " + (downloadErr?.message || ""));
     }
 
-    const videoUrl = signedData.signedUrl;
+    const fileBytes = new Uint8Array(await fileData.arrayBuffer());
+
+    // Determine the video MIME type
+    let mimeType = "video/webm"; // Default since webm is recorded
+    const lowerUrl = application.video_url.toLowerCase();
+    if (lowerUrl.endsWith(".mp4")) {
+      mimeType = "video/mp4";
+    } else if (lowerUrl.endsWith(".webm")) {
+      mimeType = "video/webm";
+    } else if (lowerUrl.endsWith(".mov")) {
+      mimeType = "video/quicktime";
+    }
 
     const prompt = `You are an expert HR recruitment analyst reviewing a candidate's video introduction.
 
@@ -110,91 +130,170 @@ SCORING GUIDELINES:
 - Score 6-7: Average to good
 - Score 8-9: Very good
 - Score 10: Exceptional, outstanding
-- Most candidates should score between 4-7 on average metrics. Only truly exceptional candidates get 8+.
+- Most candidates should score between 4-7 on average metrics. Only truly exceptional candidates get 8+.`;
 
-Return ONLY valid JSON with these exact fields:
-{
-  "overall_score": number 0-100,
-  "energy_level": { "score": number 0-10, "feedback": "1-2 sentences with specific observations" },
-  "eye_contact": { "score": number 0-10, "feedback": "1-2 sentences with specific observations" },
-  "english_fluency": { "score": number 0-10, "feedback": "1-2 sentences with specific observations" },
-  "vocabulary": { "score": number 0-10, "feedback": "1-2 sentences with specific observations" },
-  "communication_skills": { "score": number 0-10, "feedback": "1-2 sentences with specific observations" },
-  "confidence": { "score": number 0-10, "feedback": "1-2 sentences with specific observations" },
-  "body_language": { "score": number 0-10, "feedback": "1-2 sentences with specific observations" },
-  "content_quality": { "score": number 0-10, "feedback": "1-2 sentences with specific observations" },
-  "professionalism": { "score": number 0-10, "feedback": "1-2 sentences with specific observations" },
-  "overall_impression": { "score": number 0-10, "feedback": "1-2 sentences with specific observations" },
-  "verdict": "strong" or "average" or "weak",
-  "summary": "3-4 sentence summary for hiring manager with specific details from the video",
-  "strengths": ["strength1", "strength2", "strength3"],
-  "improvements": ["area1", "area2", "area3"]
-}`;
+    // Convert video file to base64
+    const base64Data = arrayBufferToBase64(fileBytes);
 
-    // Use the signed URL directly - Gemini can fetch video from URL
-    const aiResponse = await fetch(Deno.env.get("AI_GATEWAY_URL")!, {
+    // Call native Google Gemini API
+    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`;
+
+    const aiResponse = await fetch(geminiUrl, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${aiGatewayApiKey}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: [
+        contents: [
           {
-            role: "system",
-            content: "You are an expert HR video analyst. You carefully watch candidate videos and provide detailed, honest, and strict scoring. Always respond with valid JSON only, no markdown. Be specific in your feedback - mention what you actually observed.",
-          },
-          {
-            role: "user",
-            content: [
+            parts: [
               {
-                type: "image_url",
-                image_url: { url: videoUrl },
+                inlineData: {
+                  mimeType: mimeType,
+                  data: base64Data,
+                },
               },
               {
-                type: "text",
                 text: prompt,
               },
             ],
           },
         ],
-        max_tokens: 3000,
+        generationConfig: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: "OBJECT",
+            properties: {
+              overall_score: { 
+                type: "INTEGER",
+                description: "A score between 0 and 100 representing the candidate's average score across all parameters."
+              },
+              energy_level: {
+                type: "OBJECT",
+                properties: {
+                  score: { type: "INTEGER" },
+                  feedback: { type: "STRING" }
+                },
+                required: ["score", "feedback"]
+              },
+              eye_contact: {
+                type: "OBJECT",
+                properties: {
+                  score: { type: "INTEGER" },
+                  feedback: { type: "STRING" }
+                },
+                required: ["score", "feedback"]
+              },
+              english_fluency: {
+                type: "OBJECT",
+                properties: {
+                  score: { type: "INTEGER" },
+                  feedback: { type: "STRING" }
+                },
+                required: ["score", "feedback"]
+              },
+              vocabulary: {
+                type: "OBJECT",
+                properties: {
+                  score: { type: "INTEGER" },
+                  feedback: { type: "STRING" }
+                },
+                required: ["score", "feedback"]
+              },
+              communication_skills: {
+                type: "OBJECT",
+                properties: {
+                  score: { type: "INTEGER" },
+                  feedback: { type: "STRING" }
+                },
+                required: ["score", "feedback"]
+              },
+              confidence: {
+                type: "OBJECT",
+                properties: {
+                  score: { type: "INTEGER" },
+                  feedback: { type: "STRING" }
+                },
+                required: ["score", "feedback"]
+              },
+              body_language: {
+                type: "OBJECT",
+                properties: {
+                  score: { type: "INTEGER" },
+                  feedback: { type: "STRING" }
+                },
+                required: ["score", "feedback"]
+              },
+              content_quality: {
+                type: "OBJECT",
+                properties: {
+                  score: { type: "INTEGER" },
+                  feedback: { type: "STRING" }
+                },
+                required: ["score", "feedback"]
+              },
+              professionalism: {
+                type: "OBJECT",
+                properties: {
+                  score: { type: "INTEGER" },
+                  feedback: { type: "STRING" }
+                },
+                required: ["score", "feedback"]
+              },
+              overall_impression: {
+                type: "OBJECT",
+                properties: {
+                  score: { type: "INTEGER" },
+                  feedback: { type: "STRING" }
+                },
+                required: ["score", "feedback"]
+              },
+              verdict: { 
+                type: "STRING", 
+                enum: ["strong", "average", "weak"],
+                description: "Overall verdict on the video introduction."
+              },
+              summary: { 
+                type: "STRING",
+                description: "3-4 sentence summary of candidate performance."
+              },
+              strengths: { 
+                type: "ARRAY", 
+                items: { type: "STRING" },
+                description: "List of key strengths noticed in the video."
+              },
+              improvements: { 
+                type: "ARRAY", 
+                items: { type: "STRING" },
+                description: "List of areas to improve."
+              }
+            },
+            required: [
+              "overall_score", "energy_level", "eye_contact", "english_fluency", 
+              "vocabulary", "communication_skills", "confidence", "body_language", 
+              "content_quality", "professionalism", "overall_impression", "verdict", 
+              "summary", "strengths", "improvements"
+            ]
+          }
+        }
       }),
     });
 
     if (!aiResponse.ok) {
       const errText = await aiResponse.text();
-      console.error("AI gateway error:", aiResponse.status, errText);
-      throw new Error(`AI error: ${aiResponse.status}`);
+      console.error("Gemini API error:", aiResponse.status, errText);
+      throw new Error(`Gemini API error: ${aiResponse.status} - ${errText}`);
     }
 
     const aiData = await aiResponse.json();
-    const aiContent = aiData.choices?.[0]?.message?.content || "";
+    const aiContent = aiData.candidates?.[0]?.content?.parts?.[0]?.text || "";
 
     let analysis;
     try {
-      const cleaned = aiContent.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
-      analysis = JSON.parse(cleaned);
-    } catch {
-      console.error("Failed to parse AI video response:", aiContent);
-      analysis = {
-        overall_score: 50,
-        energy_level: { score: 5, feedback: "Could not fully analyze." },
-        eye_contact: { score: 5, feedback: "Could not fully analyze." },
-        english_fluency: { score: 5, feedback: "Could not fully analyze." },
-        vocabulary: { score: 5, feedback: "Could not fully analyze." },
-        communication_skills: { score: 5, feedback: "Could not fully analyze." },
-        confidence: { score: 5, feedback: "Could not fully analyze." },
-        body_language: { score: 5, feedback: "Could not fully analyze." },
-        content_quality: { score: 5, feedback: "Could not fully analyze." },
-        professionalism: { score: 5, feedback: "Could not fully analyze." },
-        overall_impression: { score: 5, feedback: "Could not fully analyze." },
-        verdict: "average",
-        summary: "AI analysis was inconclusive. Manual review recommended.",
-        strengths: [],
-        improvements: [],
-      };
+      analysis = JSON.parse(aiContent.trim());
+    } catch (e) {
+      console.error("Failed to parse Gemini response JSON:", aiContent, e);
+      throw new Error("Invalid JSON response received from Gemini model.");
     }
 
     await supabase

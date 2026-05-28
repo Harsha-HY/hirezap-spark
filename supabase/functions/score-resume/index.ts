@@ -5,6 +5,15 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+function arrayBufferToBase64(buffer: Uint8Array): string {
+  let binary = "";
+  const len = buffer.byteLength;
+  for (let i = 0; i < len; i++) {
+    binary += String.fromCharCode(buffer[i]);
+  }
+  return btoa(binary);
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -21,10 +30,10 @@ Deno.serve(async (req) => {
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const aiGatewayApiKey = Deno.env.get("AI_GATEWAY_API_KEY");
+    const geminiApiKey = Deno.env.get("GEMINI_API_KEY") || Deno.env.get("AI_GATEWAY_API_KEY");
 
-    if (!aiGatewayApiKey) {
-      throw new Error("AI_GATEWAY_API_KEY is not configured");
+    if (!geminiApiKey) {
+      throw new Error("GEMINI_API_KEY or AI_GATEWAY_API_KEY is not configured");
     }
 
     const supabase = createClient(supabaseUrl, serviceRoleKey);
@@ -57,34 +66,32 @@ Deno.serve(async (req) => {
       throw new Error("Job not found: " + (jobErr?.message || ""));
     }
 
-    // Get resume content - use signed URL for AI to read directly
-    let resumeSignedUrl: string | null = null;
-    let resumeText = "No resume provided";
+    // Retrieve resume file bytes and determine mime type
+    let fileBytes: Uint8Array | null = null;
+    let mimeType = "";
+    let resumeText = "";
 
     if (application.resume_url) {
       try {
         const resumeRef = String(application.resume_url);
 
         if (!resumeRef.startsWith("http")) {
-          // Private bucket - create signed URL
-          const { data: signedData, error: signedErr } = await supabase.storage
-            .from("resumes")
-            .createSignedUrl(resumeRef, 3600);
-          if (!signedErr && signedData?.signedUrl) {
-            resumeSignedUrl = signedData.signedUrl;
-          }
-        } else {
-          resumeSignedUrl = resumeRef;
-        }
-
-        // Also try text extraction as fallback
-        if (!resumeRef.startsWith("http")) {
           const { data: fileData, error: fileErr } = await supabase.storage.from("resumes").download(resumeRef);
           if (!fileErr && fileData) {
-            const bytes = new Uint8Array(await fileData.arrayBuffer());
-            if (bytes.length > 0) {
+            fileBytes = new Uint8Array(await fileData.arrayBuffer());
+            const lowerRef = resumeRef.toLowerCase();
+            if (lowerRef.endsWith(".pdf")) {
+              mimeType = "application/pdf";
+            } else if (lowerRef.endsWith(".jpg") || lowerRef.endsWith(".jpeg")) {
+              mimeType = "image/jpeg";
+            } else if (lowerRef.endsWith(".png")) {
+              mimeType = "image/png";
+            } else if (lowerRef.endsWith(".webp")) {
+              mimeType = "image/webp";
+            } else {
+              // Try text decoding fallback for text/docx/doc files
               const textDecoder = new TextDecoder("utf-8", { fatal: false });
-              const rawText = textDecoder.decode(bytes);
+              const rawText = textDecoder.decode(fileBytes);
               const textParts: string[] = [];
               const lines = rawText.split(/\r?\n/);
               for (const line of lines) {
@@ -95,12 +102,18 @@ Deno.serve(async (req) => {
               }
               if (textParts.length > 0) {
                 resumeText = textParts.join("\n").substring(0, 8000);
+              } else {
+                resumeText = "Could not extract plain text from word document. Please inspect metadata.";
               }
             }
           }
+        } else {
+          // It's a public HTTP URL, we could fetch it but standard resumes are private paths.
+          // Fall back to just storing url
+          resumeText = `Resume link: ${resumeRef}`;
         }
       } catch (e) {
-        console.error("Resume extraction error:", e);
+        console.error("Resume download/extraction error:", e);
         resumeText = "Could not extract resume text";
       }
     }
@@ -109,13 +122,13 @@ Deno.serve(async (req) => {
     const prompt = `You are an expert HR recruiter. Analyze this candidate's profile and resume against the job description and give an accurate score.
 
 IMPORTANT SCORING RULES:
-- Score MUST be based on actual skill match, experience fit, and job relevance
-- Experience match is critical: if candidate has ${application.experience_years} years and job needs ${job.experience_min ?? "N/A"}-${job.experience_max ?? "N/A"} years, factor this heavily
-- CTC expectations: Current ${application.current_ctc} LPA, Expected ${application.expected_ctc} LPA - flag if unreasonable gap
+- Score MUST be based on actual skill match, experience fit, and job relevance.
+- Experience match is critical: if candidate has ${application.experience_years} years and job needs ${job.experience_min ?? "N/A"}-${job.experience_max ?? "N/A"} years, factor this heavily.
+- CTC expectations: Current ${application.current_ctc} LPA, Expected ${application.expected_ctc} LPA - flag if unreasonable gap.
 - Be STRICT and ACCURATE. Do not inflate scores.
-- Score range: 0-30 = weak (major skill gaps, wrong domain), 31-50 = below average (some gaps), 51-70 = average (decent match), 71-85 = good (strong match), 86-100 = excellent (perfect fit, rare)
+- Score range: 0-30 = weak (major skill gaps, wrong domain), 31-50 = below average (some gaps), 51-70 = average (decent match), 71-85 = good (strong match), 86-100 = excellent (perfect fit, rare).
 - Most candidates should score between 40-70. Only truly exceptional matches get 80+.
-- If resume text is limited, heavily penalize the score and note it.
+- If resume content is limited, heavily penalize the score and note it.
 
 Job Title: ${job.title}
 Department: ${job.department}
@@ -131,93 +144,108 @@ Current Company: ${application.current_company}
 Current CTC: ${application.current_ctc} LPA
 Expected CTC: ${application.expected_ctc} LPA
 Notice Period: ${application.notice_period} days
-Experience: ${application.experience_years} years
+Experience: ${application.experience_years} years`;
 
-Candidate Resume Text (extracted from PDF):
-${resumeText}
+    // Call native Google Gemini API
+    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`;
 
-Return ONLY a valid JSON response with these exact fields:
-{
-  "score": number between 0 and 100,
-  "matched_skills": ["skill1", "skill2"],
-  "missing_skills": ["skill1", "skill2"],
-  "experience_match": true or false,
-  "education": "degree details if found",
-  "verdict": "strong" or "average" or "weak",
-  "recommendation": "2-3 sentences explaining the score with specific reasons",
-  "ai_message_to_hr": "3-4 sentences for HR explaining why this candidate is good/bad fit with specific details from resume"
-}`;
+    const parts: any[] = [];
 
-    // Build messages - if we have a signed URL for the resume, send it as an image for Gemini to read
-    const userContent: any[] = [];
-
-    if (resumeSignedUrl) {
-      userContent.push({
-        type: "image_url",
-        image_url: { url: resumeSignedUrl },
+    // Add resume file if we downloaded it and it's a natively supported type (PDF/images)
+    if (fileBytes && mimeType) {
+      const base64Data = arrayBufferToBase64(fileBytes);
+      parts.push({
+        inlineData: {
+          mimeType: mimeType,
+          data: base64Data,
+        },
       });
     }
 
-    userContent.push({
-      type: "text",
-      text: prompt,
+    // Add prompt text (including fallback decoded text if present)
+    let fullPrompt = prompt;
+    if (resumeText) {
+      fullPrompt += `\n\nCandidate Resume Text (extracted):\n${resumeText}`;
+    }
+
+    parts.push({
+      text: fullPrompt,
     });
 
-    // Call AI gateway
-    const aiResponse = await fetch(Deno.env.get("AI_GATEWAY_URL")!, {
+    const response = await fetch(geminiUrl, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${aiGatewayApiKey}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: [
-          { role: "system", content: "You are an expert HR recruiter AI. You carefully analyze resumes and job descriptions. Always respond with valid JSON only, no markdown. Be strict and specific in your scoring." },
-          { role: "user", content: userContent },
+        contents: [
+          {
+            parts: parts,
+          },
         ],
-        max_tokens: 1500,
+        generationConfig: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: "OBJECT",
+            properties: {
+              score: { 
+                type: "INTEGER",
+                description: "A score between 0 and 100 representing job/resume fit."
+              },
+              matched_skills: { 
+                type: "ARRAY", 
+                items: { type: "STRING" },
+                description: "List of skills candidate possesses that match the job."
+              },
+              missing_skills: { 
+                type: "ARRAY", 
+                items: { type: "STRING" },
+                description: "List of skills required by the job but missing in candidate's resume."
+              },
+              experience_match: { 
+                type: "BOOLEAN",
+                description: "Whether the candidate's years of experience matches the job requirement."
+              },
+              education: { 
+                type: "STRING",
+                description: "Candidate's education details found."
+              },
+              verdict: { 
+                type: "STRING", 
+                enum: ["strong", "average", "weak"],
+                description: "Overall candidate evaluation verdict."
+              },
+              recommendation: { 
+                type: "STRING",
+                description: "2-3 sentences explaining the score with specific reasons."
+              },
+              ai_message_to_hr: { 
+                type: "STRING",
+                description: "3-4 sentences for HR explaining why this candidate is a good/bad fit with specific details."
+              }
+            },
+            required: ["score", "matched_skills", "missing_skills", "experience_match", "education", "verdict", "recommendation", "ai_message_to_hr"]
+          }
+        }
       }),
     });
 
-    if (!aiResponse.ok) {
-      const errText = await aiResponse.text();
-      console.error("AI gateway error:", aiResponse.status, errText);
-      if (aiResponse.status === 429) {
-        return new Response(JSON.stringify({ error: "Rate limited, please try again later" }), {
-          status: 429,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      if (aiResponse.status === 402) {
-        return new Response(JSON.stringify({ error: "Payment required for AI" }), {
-          status: 402,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      throw new Error(`AI error: ${aiResponse.status}`);
+    if (!response.ok) {
+      const errText = await response.text();
+      console.error("Gemini API error:", response.status, errText);
+      throw new Error(`Gemini API error: ${response.status} - ${errText}`);
     }
 
-    const aiData = await aiResponse.json();
-    const aiContent = aiData.choices?.[0]?.message?.content || "";
+    const aiData = await response.json();
+    const aiContent = aiData.candidates?.[0]?.content?.parts?.[0]?.text || "";
 
     // Parse AI response
     let analysis;
     try {
-      const cleaned = aiContent.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
-      analysis = JSON.parse(cleaned);
-    } catch {
-      console.error("Failed to parse AI response:", aiContent);
-      analysis = {
-        score: 50,
-        matched_skills: [],
-        missing_skills: [],
-        experience_match: false,
-        education: "Unknown",
-        verdict: "average",
-        recommendation: "Could not fully analyze resume.",
-        ai_message_to_hr: "AI analysis was inconclusive. Manual review recommended.",
-      };
+      analysis = JSON.parse(aiContent.trim());
+    } catch (e) {
+      console.error("Failed to parse Gemini response JSON:", aiContent, e);
+      throw new Error("Invalid JSON response received from Gemini model.");
     }
 
     // Update application with score
@@ -247,7 +275,7 @@ Return ONLY a valid JSON response with these exact fields:
     if (hrUser) {
       await supabase.from("notifications").insert({
         user_id: hrUser.id,
-        title: "New Application Received",
+        title: "New Application Scored",
         message: `${candidateName} applied for ${job.title}. AI Score: ${analysis.score}/100. Verdict: ${analysis.verdict}. ${analysis.ai_message_to_hr}`,
         read: false,
       });

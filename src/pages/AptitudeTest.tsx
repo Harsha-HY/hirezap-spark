@@ -449,22 +449,27 @@ const AptitudeTest = () => {
       return;
     }
 
+    // Fetch job with cutoff score
+    const { data: job } = await supabase
+      .from("jobs")
+      .select("company_id, title, aptitude_cutoff")
+      .eq("id", application.job_id)
+      .maybeSingle();
+
+    const cutoff = job?.aptitude_cutoff ?? 60;
+    const passedCutoff = score >= cutoff;
+    const nextStage = passedCutoff ? "video_intro" : "test_completed";
+
     // Update application stage and score
     await supabase
       .from("applications")
       .update({
         test_score: score,
-        current_stage: "test_completed",
+        current_stage: nextStage,
       })
       .eq("id", application.id);
 
     // Notify HR - find HR users for this job's company
-    const { data: job } = await supabase
-      .from("jobs")
-      .select("company_id, title")
-      .eq("id", application.job_id)
-      .maybeSingle();
-
     if (job) {
       const { data: hrUsers } = await supabase
         .from("users")
@@ -472,20 +477,52 @@ const AptitudeTest = () => {
         .eq("company_id", job.company_id)
         .eq("role", "hr");
 
+      const { data: candidateUser } = await supabase
+        .from("users")
+        .select("full_name")
+        .eq("id", candidateId)
+        .maybeSingle();
+
+      const candidateName = candidateUser?.full_name || "Candidate";
+
+      // Notify candidate
+      if (passedCutoff) {
+        await supabase.from("notifications").insert({
+          user_id: candidateId,
+          title: "🎉 Passed Aptitude Test!",
+          message: `Congratulations! You scored ${score}% (cutoff: ${cutoff}%) and have been promoted to the Video Introduction round. Please record your video.`,
+        });
+      } else {
+        await supabase.from("notifications").insert({
+          user_id: candidateId,
+          title: "Aptitude Test Completed",
+          message: `You completed the aptitude test with a score of ${score}% (cutoff: ${cutoff}%). Your application is under review.`,
+        });
+      }
+
       if (hrUsers) {
-        const { data: candidateUser } = await supabase
-          .from("users")
-          .select("full_name")
-          .eq("id", candidateId)
-          .maybeSingle();
-
-        const candidateName = candidateUser?.full_name || "Candidate";
-
         for (const hr of hrUsers) {
           await supabase.from("notifications").insert({
             user_id: hr.id,
             title: "Test Completed",
-            message: `${candidateName} completed the aptitude test for ${job.title}. Score: ${score}/100. Violations: ${violations} flags.`,
+            message: `${candidateName} completed the aptitude test for ${job.title}. Score: ${score}/100. ${passedCutoff ? "Qualified and moved to Video Round." : "Did not clear cutoff."} Violations: ${violations} flags.`,
+          });
+        }
+      }
+
+      // Notify Superadmins (owners of the company)
+      const { data: superAdmins } = await supabase
+        .from("users")
+        .select("id")
+        .eq("role", "superadmin")
+        .eq("company_id", job.company_id);
+
+      if (superAdmins) {
+        for (const admin of superAdmins) {
+          await supabase.from("notifications").insert({
+            user_id: admin.id,
+            title: "🎯 Aptitude Test Completed",
+            message: `${candidateName} completed the aptitude test for ${job.title}. Score: ${score}/100. ${passedCutoff ? "Qualified and moved to Video Round." : "Did not clear cutoff."} Violations: ${violations} flags.`,
           });
         }
       }
